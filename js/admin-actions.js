@@ -1,0 +1,7 @@
+export const ADMIN_ADD_ACTIONS=[
+  {id:'utility',label:'Utility bill'},{id:'grocery',label:'Grocery'},{id:'paylater',label:'PayLater'},
+  {id:'other',label:'Other expense'},{id:'payment',label:'Record payment'},{id:'announcement',label:'Announcement'}
+];
+export function equalSplit(totalCents,memberIds){if(!memberIds?.length)throw new Error('Select at least one member.');const total=Number(totalCents);const base=Math.floor(total/memberIds.length);let extra=total-base*memberIds.length;return memberIds.map(member_id=>({member_id,amount_cents:base+(extra-->0?1:0)}));}
+export function parseMoneyCents(value){const s=String(value??'').trim().replace(/,/g,'');if(!/^\d+(?:\.\d{0,2})?$/.test(s))throw new Error('Enter a valid amount.');const [a,b='']=s.split('.');return Number(a)*100+Number((b+'00').slice(0,2));}
+export function buildUtilityPayload({householdId,periodId,adminMemberId,activeMemberIds,utilityType,description,amountCents,dueDate,expenseDate,idempotencyKey=crypto.randomUUID()}){const splits=equalSplit(amountCents,activeMemberIds);return {p_household:householdId,p_period:periodId,p_category:'Housing & Utilities',p_description:description,p_amount_cents:Number(amountCents),p_expense_date:expenseDate,p_due_date:dueDate,p_payers:[{member_id:adminMemberId,amount_cents:Number(amountCents)}],p_splits:splits,p_source_type:'utility',p_source_label:utilityType==='electricity'?'Meralco':utilityType==='wifi'?'PLDT WiFi':'Water',p_idempotency_key:idempotencyKey,p_utility_type:utilityType};}

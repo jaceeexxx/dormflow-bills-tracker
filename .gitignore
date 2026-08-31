@@ -1,0 +1,14 @@
+.DS_Store
+Thumbs.db
+*.log
+.vscode/
+.idea/
+.vercel/
+.worktrees/
+node_modules/
+.env
+.env.*
+!.env.example
+
+.vercel
+.env*

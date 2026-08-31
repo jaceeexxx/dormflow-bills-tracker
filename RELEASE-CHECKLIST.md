@@ -1,0 +1,23 @@
+# DormFlow v3.3 Release Checklist
+
+- [ ] `npm test` passes with zero v3 failures.
+- [ ] `npm run check` passes.
+- [ ] `package.json` is v3.3.0 and declares `web-push`.
+- [ ] Release contains only the authenticated v3 app; no `admin.html`, public v2 client, old patch migrations, or public QR images.
+- [ ] No `.env`, Supabase secret/service-role credential, VAPID private key, CRON secret, password, private receipt, `.git`, or worktree metadata is packaged.
+- [ ] `js/config.js` contains only browser-safe placeholders/values.
+- [ ] Fresh Supabase order is `schema.sql` → four Auth accounts → `seed-members.sql` → `migrate-history.sql`.
+- [ ] August checks remain ₱23,944.22 total / ₱22,062.29 settled / ₱1,881.93 outstanding.
+- [ ] Existing v3.2 Supabase projects run `supabase/migrate-v3.3.sql` once and **do not rerun** `schema.sql`, `seed-members.sql`, `migrate-history.sql`, or `migrate-v3.2.sql`.
+- [ ] Jace Admin Workspace and personal view both load; member accounts remain personalized and RLS-protected.
+- [ ] Avatar upload/replace/remove and MariBank QR upload/view/remove work through private `household-media` Storage.
+- [ ] Banking-card carousel works by swipe/drag and degrades safely with reduced motion.
+- [ ] Service worker cache name is v3.3 and release-critical HTML/CSS/JS are network-first.
+- [ ] Member privacy is enforced through RLS and `financial-documents` remains private.
+- [ ] PWA manifest/icons/service worker are present and detailed financial API responses are not durably cached.
+- [ ] Offline financial writes are blocked and sign-out clears user-specific offline/app-lock state.
+- [ ] DormFlow Inbox is always on; all five device-push categories default ON while OS permission remains user-approved.
+- [ ] Reminder stages are 3 days before / 1 day before / due today / daily overdue and cron is `0 0 * * *` (8:00 AM PHT).
+- [ ] Exactly one billing month is Active; activating September closes August without moving or resetting unpaid August obligations.
+- [ ] Optional device push uses public/private VAPID separation and reminders require `CRON_SECRET`.
+- [ ] ZIP integrity succeeds and forbidden legacy/private paths are absent from the archive.

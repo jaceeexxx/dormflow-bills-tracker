@@ -1,0 +1,14 @@
+{
+  "name": "dormflow-bills-tracker",
+  "version": "3.3.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/v3-*.test.mjs",
+    "check": "node scripts/check-project.mjs",
+    "release": "node scripts/package-release.mjs"
+  },
+  "dependencies": {
+    "web-push": "^3.6.7"
+  }
+}

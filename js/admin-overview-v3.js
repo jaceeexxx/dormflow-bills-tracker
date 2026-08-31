@@ -1,0 +1,72 @@
+import {supabase} from './auth.js';
+import {formatPeso,escapeHtml} from './read-model-v3.js';
+import {ADMIN_ADD_ACTIONS} from './admin-actions.js';
+import {buildAdminDashboard} from './dashboard-model.js';
+import {icon} from './icons.js';
+import {formatBillingMonth} from './months.js';
+
+const palette=['#0f6b57','#f39a3d','#294c7a','#b7a164'];
+const categoryIcon=label=>label.includes('Housing')?'utilities':label.includes('Grocer')?'grocery':label.includes('PayLater')?'paylater':'wallet';
+
+export async function loadAdminOverview(){
+  const raw=await supabase.rpc('admin_overview_v3');const base=Array.isArray(raw)?raw[0]:raw;
+  const periodId=base?.period_id;
+  const [expenses,obligations,allocations,memberRows,payments,announcements]=await Promise.all([
+    supabase.select('expenses',`select=id,period_id,description,category,amount_cents,due_date,expense_date,created_at,status&status=eq.active${periodId?`&period_id=eq.${periodId}`:''}&order=amount_cents.desc`),
+    supabase.select('obligations','select=id,period_id,debtor_member_id,creditor_member_id,creditor_label,original_amount_cents,due_date,source_category'),
+    supabase.select('payment_allocations','select=obligation_id,amount_cents'),
+    supabase.select('household_members','select=id,role,accent,is_active,profiles(display_name)&is_active=eq.true'),
+    supabase.select('payments','select=id,payer_member_id,payee_member_id,amount_cents,paid_at,method,status,created_at&order=paid_at.desc&limit=8'),
+    supabase.select('announcements','select=id,title,priority,is_active,starts_at,ends_at&order=created_at.desc&limit=8').catch(()=>[])
+  ]);
+  const members=memberRows.map(r=>({id:r.id,name:r.profiles?.display_name||'Member',accent:r.accent,role:r.role}));
+  return {...buildAdminDashboard({base,expenses,obligations,allocations,members,payments}),activeAnnouncements:(announcements||[]).filter(a=>a.is_active).length,latestAnnouncements:announcements||[]};
+}
+
+function donutGradient(categories=[]){
+  let cursor=0;const stops=[];
+  categories.slice(0,4).forEach((c,i)=>{const start=cursor,end=cursor+(c.share||0)*100;stops.push(`${palette[i%palette.length]} ${start.toFixed(2)}% ${end.toFixed(2)}%`);cursor=end;});
+  if(cursor<100)stops.push(`#e9eeeb ${cursor.toFixed(2)}% 100%`);
+  return `conic-gradient(${stops.join(',')})`;
+}
+
+function quickAction(action){return `<button type="button" class="bank-quick-action" data-admin-add="${action.id}"><span class="quick-icon">${icon(action.id==='utility'?'utilities':action.id==='grocery'?'grocery':action.id==='paylater'?'paylater':action.id==='other'?'wallet':action.id==='payment'?'transfer':'announcement')}</span><strong>${escapeHtml(action.label.replace(' bill',''))}</strong></button>`;}
+
+function settlementRow(row,max){const pct=max?Math.max(4,100-(row.outstandingCents/max)*100):100;return `<div class="settlement-row"><div class="member-avatar" style="--member-accent:${escapeHtml(row.accent||'#64756f')}">${escapeHtml(row.name.slice(0,1))}</div><div class="settlement-main"><div><strong>${escapeHtml(row.name)}</strong><span>${row.status==='settled'?'Settled':`${formatPeso(row.outstandingCents)} remaining`}</span></div><div class="settlement-progress"><i style="width:${pct.toFixed(1)}%"></i></div></div><span class="status-dot ${row.status}"></span></div>`;}
+
+export function renderAdminOverview(vm={}){
+  const categories=vm.categories||[],relationships=vm.relationships||[],members=vm.memberSettlement||[],recent=vm.recent||[],upcoming=vm.upcoming||[],activeMonth=formatBillingMonth(vm.periodMonth);
+  const maxOutstanding=Math.max(...members.map(x=>x.outstandingCents||0),1);
+  return `<section class="screen banking-dashboard admin-banking-dashboard">
+    <div class="bank-page-head"><div><span class="screen-kicker">20 St. Paul · ${escapeHtml(activeMonth)}</span><h1>Overview</h1></div><button class="mode-switch-card" type="button" data-route="home"><span>${icon('wallet')}</span><div><strong>My personal view</strong><small>See Jace's own balance</small></div><b>›</b></button></div>
+
+    <section class="bank-balance-card admin-balance-card">
+      <div class="balance-card-top"><div><span>Household outstanding</span><strong>${formatPeso(vm.outstandingCents||0)}</strong></div><span class="balance-chip">${Number(vm.settledRate||0).toFixed(1)}% settled</span></div>
+      <div class="balance-card-progress"><i style="width:${Math.max(0,Math.min(100,Number(vm.settledRate||0))).toFixed(1)}%"></i></div>
+      <div class="balance-card-meta"><div><span>Monthly obligations</span><strong>${formatPeso(vm.totalCents||0)}</strong></div><div><span>Settled</span><strong>${formatPeso(vm.settledCents||0)}</strong></div><div><span>Open balances</span><strong>${vm.overdueCount||0}</strong></div></div>
+    </section>
+
+    <section class="bank-quick-actions admin-quick-actions">
+      ${ADMIN_ADD_ACTIONS.slice(0,5).map(quickAction).join('')}
+      <button type="button" class="bank-quick-action" data-action="open-add"><span class="quick-icon">${icon('more')}</span><strong>More</strong></button>
+    </section>
+
+    <div class="banking-kpi-grid">
+      <article class="bank-panel finance-composition"><div class="panel-head"><div><span>Monthly picture</span><h2>Expense composition</h2></div><button class="panel-link" data-manage="expenses">View all</button></div>
+        <div class="composition-body"><div class="finance-donut" style="background:${donutGradient(categories)}"><div><strong>${formatPeso(vm.totalCents||0)}</strong><span>Total</span></div></div><div class="composition-legend">${categories.slice(0,4).map((c,i)=>`<div><span class="legend-dot" style="background:${palette[i%palette.length]}"></span><div><strong>${escapeHtml(c.label)}</strong><small>${((c.share||0)*100).toFixed(1)}%</small></div><b>${formatPeso(c.amountCents)}</b></div>`).join('')||'<p class="empty-line">No expenses yet</p>'}</div></div>
+      </article>
+
+      <article class="bank-panel"><div class="panel-head"><div><span>Household</span><h2>Settlement status</h2></div><button class="panel-link" data-route="review">Review</button></div><div class="settlement-list">${members.map(x=>settlementRow(x,maxOutstanding)).join('')||'<p class="empty-line">No settlement data yet</p>'}</div></article>
+    </div>
+
+    <div class="banking-kpi-grid lower-grid">
+      <article class="bank-panel relationship-panel"><div class="panel-head"><div><span>Balances</span><h2>Who needs to pay whom</h2></div><span class="panel-badge">${relationships.length} open</span></div><div class="relationship-list">${relationships.slice(0,6).map(r=>`<div class="relationship-row"><div class="relationship-flow"><span class="mini-avatar">${escapeHtml(r.debtorName.slice(0,1))}</span><div><strong>${escapeHtml(r.debtorName)}</strong><small>pays ${escapeHtml(r.creditorName)}</small></div></div><b>${formatPeso(r.amountCents)}</b></div>`).join('')||'<div class="empty-state-bank"><strong>Household settled</strong><span>No outstanding transfers.</span></div>'}</div></article>
+
+      <article class="bank-panel"><div class="panel-head"><div><span>Attention</span><h2>Upcoming</h2></div><button class="panel-link" data-route="review">Review</button></div><div class="upcoming-list">${upcoming.slice(0,5).map(x=>`<div class="upcoming-row"><span class="upcoming-icon">${icon(categoryIcon(x.category))}</span><div><strong>${escapeHtml(x.label)}</strong><small>${escapeHtml(x.category)} · ${new Date(x.date+'T00:00:00').toLocaleDateString('en-PH',{month:'short',day:'numeric'})}</small></div><b>${formatPeso(x.amountCents)}</b></div>`).join('')||'<div class="empty-state-bank"><strong>Nothing urgent</strong><span>No upcoming balances to review.</span></div>'}</div></article>
+    </div>
+
+    <div class="banking-kpi-grid admin-communication-grid"><article class="bank-panel announcement-overview-card"><div class="panel-head"><div><span>Household updates</span><h2>Announcements</h2></div><button class="panel-link" data-manage="announcements">Manage</button></div><div class="announcement-overview-body"><span class="summary-icon warm">${icon('announcement')}</span><div><strong>${vm.activeAnnouncements||0}</strong><small>active announcement${(vm.activeAnnouncements||0)===1?'':'s'}</small></div><button type="button" class="secondary-action" data-admin-add="announcement">Post announcement</button></div></article><article class="bank-panel activity-panel"><div class="panel-head"><div><span>Latest</span><h2>Recent activity</h2></div><span class="panel-badge">${vm.pendingClaims||0} pending claims</span></div><div class="activity-list">${recent.map(x=>`<div class="activity-row"><span class="activity-icon">${icon(x.kind==='payment'?'transfer':'wallet')}</span><div><strong>${escapeHtml(x.title)}</strong><small>${escapeHtml(x.subtitle)} · ${new Date(x.date).toLocaleDateString('en-PH',{month:'short',day:'numeric'})}</small></div><b>${x.kind==='payment'?'+':''}${formatPeso(x.amountCents)}</b></div>`).join('')||'<div class="empty-state-bank"><strong>No recent activity</strong><span>New payments and expenses will appear here.</span></div>'}</div></article></div>
+  </section>`;
+}
+
+export function renderAddSheet(){return `<div class="sheet-body"><div class="sheet-grabber"></div><div class="sheet-head"><div><span class="sheet-kicker">Quick add</span><h2>Choose an action</h2></div><button class="icon-plain" data-close-sheet type="button">×</button></div><div class="add-sheet-grid">${ADMIN_ADD_ACTIONS.map(a=>`<button type="button" data-admin-add="${a.id}"><span class="quick-icon">${icon(a.id==='utility'?'utilities':a.id==='grocery'?'grocery':a.id==='paylater'?'paylater':a.id==='other'?'wallet':a.id==='payment'?'transfer':'announcement')}</span><span>${escapeHtml(a.label)}</span><b>›</b></button>`).join('')}</div></div>`;}

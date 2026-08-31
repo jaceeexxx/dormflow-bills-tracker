@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="DormFlow mark">
+  <rect width="256" height="256" rx="58" fill="#F4F6F3"/>
+  <path d="M49 113 128 43l79 70" fill="none" stroke="#14201C" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M65 101v91c0 12 10 22 22 22h82c12 0 22-10 22-22v-91" fill="none" stroke="#14201C" stroke-width="14" stroke-linecap="round"/>
+  <path d="M78 174c28-6 39-31 50-52" fill="none" stroke="#AA8A52" stroke-width="13" stroke-linecap="round"/>
+  <path d="M178 174c-28-6-39-31-50-52" fill="none" stroke="#176B55" stroke-width="13" stroke-linecap="round"/>
+  <path d="M100 187h56" fill="none" stroke="#14201C" stroke-width="10" stroke-linecap="round"/>
+</svg>
