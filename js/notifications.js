@@ -8,7 +8,7 @@ export function pushPreferenceForType(type=''){
   if(['payment_claim','payment_verified','payment_rejected','payment_recorded'].includes(type))return 'payment_updates';
   if(['due_in_3_days','due_tomorrow','due_today','overdue'].includes(type))return 'due_reminders';
   if(type==='announcement')return 'announcements';
-  if(['expense_added','utility_added'].includes(type))return 'expense_updates';
+  if(['expense_added','utility_added','paylater_added','paylater_updated','paylater_archived'].includes(type))return 'expense_updates';
   if(['month_activated','balance_carry_forward'].includes(type))return 'month_balance_updates';
   return null;
 }
@@ -33,6 +33,7 @@ export function notificationRoute(note={},identity={}){
   if(['payment_claim','payment_verified','payment_rejected','payment_recorded'].includes(type))return identity.role==='admin'&&type==='payment_claim'?'review':'payments';
   if(type==='utility_added')return 'utilities';
   if(type==='expense_added')return 'expenses';
+  if(['paylater_added','paylater_updated','paylater_archived'].includes(type))return 'paylater';
   if(type==='announcement')return identity.role==='admin'?'manage-announcements':'notifications';
   if(['due_in_3_days','due_tomorrow','due_today','overdue','month_activated','balance_carry_forward'].includes(type))return 'balance';
   return 'notifications';
@@ -50,5 +51,5 @@ export async function requestPushForTarget({targetType,targetId}={}){
   }catch(error){return {ok:false,error:error?.message||String(error)};}
 }
 
-function notificationIcon(type=''){if(type.includes('payment'))return 'payments';if(type==='announcement')return 'announcement';if(type.includes('due')||type==='overdue')return 'calendar';if(type.includes('expense')||type==='utility_added')return 'wallet';return 'notifications';}
+function notificationIcon(type=''){if(type.includes('payment'))return 'payments';if(type==='announcement')return 'announcement';if(type.includes('due')||type==='overdue')return 'calendar';if(type.includes('expense')||type==='utility_added'||type.includes('paylater'))return 'wallet';return 'notifications';}
 export function renderNotifications(rows=[]){const unread=rows.filter(n=>!n.read_at).length;return `<section class="screen banking-dashboard notifications-screen"><div class="bank-page-head"><div><span class="screen-kicker">Inbox · Always on</span><h1>Notifications</h1></div><button class="mode-switch-card compact-mode" data-route="notification-settings" type="button"><span>${icon('settings')}</span><div><strong>Push settings</strong><small>Choose which alerts reach your device</small></div><b>›</b></button></div><section class="review-summary-card notification-summary"><span class="summary-icon">${icon('notifications')}</span><div><small>Unread</small><strong>${unread}</strong></div><div><small>Total</small><strong>${rows.length}</strong></div></section><article class="bank-panel"><div class="notification-bank-list">${rows.map(n=>`<button class="notification-bank-card ${n.read_at?'':'unread'}" data-notification-id="${n.id}" data-notification-type="${escapeHtml(n.type)}"><span class="notification-card-icon">${icon(notificationIcon(n.type))}</span><div><strong>${escapeHtml(n.title)}</strong><small>${escapeHtml(n.body)}</small></div><time>${new Date(n.created_at).toLocaleDateString('en-PH',{month:'short',day:'numeric'})}</time>${n.read_at?'':'<i></i>'}</button>`).join('')||'<div class="empty-state-bank"><strong>No notifications</strong><span>Payment, due-date and household updates will appear here.</span></div>'}</div></article></section>`;}

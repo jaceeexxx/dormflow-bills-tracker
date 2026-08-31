@@ -1,11 +1,11 @@
 import {serviceRequest,authUser} from '../lib/server-supabase.js';
-import {sendPush} from '../lib/push-server.js';
+import {sendPushWithCleanup} from '../lib/push-server.js';
 
 function preferenceForType(type=''){
   if(['payment_claim','payment_verified','payment_rejected','payment_recorded'].includes(type))return 'payment_updates';
   if(['due_in_3_days','due_tomorrow','due_today','overdue'].includes(type))return 'due_reminders';
   if(type==='announcement')return 'announcements';
-  if(['expense_added','utility_added'].includes(type))return 'expense_updates';
+  if(['expense_added','utility_added','paylater_added','paylater_updated','paylater_archived'].includes(type))return 'expense_updates';
   if(['month_activated','balance_carry_forward'].includes(type))return 'month_balance_updates';
   return null;
 }
@@ -14,6 +14,7 @@ function routeForType(type=''){
   if(type.startsWith('payment_'))return '/#/payments';
   if(type==='utility_added')return '/#/utilities';
   if(type==='expense_added')return '/#/expenses';
+  if(['paylater_added','paylater_updated','paylater_archived'].includes(type))return '/#/paylater';
   if(['due_in_3_days','due_tomorrow','due_today','overdue','month_activated','balance_carry_forward'].includes(type))return '/#/balance';
   return '/#/notifications';
 }
@@ -36,9 +37,9 @@ export default async function handler(req,res){
       if(!prefKey){await serviceRequest(`/rest/v1/notifications?id=eq.${note.id}`,{method:'PATCH',body:{push_attempted_at:stamp}});skipped++;continue;}
       const prefs=await serviceRequest(`/rest/v1/notification_preferences?select=${prefKey}&member_id=eq.${note.recipient_member_id}&limit=1`);
       if(prefs?.[0]?.[prefKey]===false){await serviceRequest(`/rest/v1/notifications?id=eq.${note.id}`,{method:'PATCH',body:{push_attempted_at:stamp}});skipped++;continue;}
-      const subs=await serviceRequest(`/rest/v1/push_subscriptions?select=endpoint,p256dh,auth_secret&member_id=eq.${note.recipient_member_id}&is_active=eq.true`);
+      const subs=await serviceRequest(`/rest/v1/push_subscriptions?select=id,endpoint,p256dh,auth_secret&member_id=eq.${note.recipient_member_id}&is_active=eq.true`);
       attempted++;let noteDelivered=0;
-      for(const sub of subs||[]){try{await sendPush(sub,{title:note.title,body:note.body,notificationId:note.id,url:routeForType(note.type)});delivered++;noteDelivered++;}catch{}}
+      for(const sub of subs||[]){try{const result=await sendPushWithCleanup(sub,{title:note.title,body:note.body,notificationId:note.id,url:routeForType(note.type)});if(result.delivered){delivered++;noteDelivered++;}}catch{}}
       await serviceRequest(`/rest/v1/notifications?id=eq.${note.id}`,{method:'PATCH',body:{push_attempted_at:stamp,...(noteDelivered?{push_sent_at:stamp}:{})}});
     }
     res.status(200).json({ok:true,attempted,delivered,skipped});

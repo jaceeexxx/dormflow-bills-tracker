@@ -1,3 +1,12 @@
+# DormFlow v3.3.1 deployment
+
+## Existing v3.3 Supabase project
+
+1. Run `supabase/migrate-v3.3.1.sql` **once** in Supabase SQL Editor.
+2. **Do not rerun** `schema.sql`, `seed-members.sql`, `migrate-history.sql`, `migrate-v3.2.sql`, or `migrate-v3.3.sql`.
+3. Keep the existing Supabase/VAPID/CRON Production environment variables, deploy v3.3.1, and reopen/hard-refresh the installed PWA once for the new service-worker cache.
+4. A project still on v3.2 must run `migrate-v3.3.sql` once before `migrate-v3.3.1.sql`.
+
 # DormFlow v3.3 Deployment Guide
 
 Use this guide for a **fresh Supabase project + GitHub + Vercel** deployment.

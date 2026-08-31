@@ -1,26 +1,17 @@
-# DormFlow v3.3 Upgrade Patch
+# DormFlow v3.3 → v3.3.1 Beta Stabilization Upgrade
 
-This patch is for an existing DormFlow v3.2 household that already has the four Auth users, August history, v3.2 media/payment-profile migration, and the private Storage buckets.
+Use this patch only on an existing DormFlow v3.3 project.
 
-## Apply in this order
+1. Back up the current DormFlow project and Supabase database.
+2. Copy the contents of this patch folder over the existing project root and replace matching files.
+3. Do **not** overwrite your local/production secret configuration. This patch does not include `.env.local`, Vercel secrets, or a private key.
+4. In Supabase SQL Editor, run `supabase/migrate-v3.3.1.sql` **once**.
+5. Do **not** rerun `supabase/schema.sql`, `seed-members.sql`, `migrate-history.sql`, `migrate-v3.2.sql`, or `migrate-v3.3.sql` on the existing v3.3 database. `schema.sql` is included only so the source tree remains correct for future fresh installs and project checks.
+6. Locally run `npm test` and `npm run check`.
+7. Deploy the updated project to Vercel. Existing Supabase/VAPID/CRON environment variables can remain unchanged.
+8. Reopen or hard-refresh the installed PWA once so the v3.3.1 service worker becomes active.
+9. On a real iPhone, re-test profile/avatar, Admin Add/Edit/Archive, realtime member updates, PayLater, six-digit PIN, foreground notification banner, and background Lock Screen push.
 
-1. Back up your current local DormFlow project folder.
-2. Copy the contents of this patch into the project root and choose **Replace** for matching files. Keep your existing `js/config.js` and `.env.local`; this patch does not contain real credentials.
-3. In Supabase → SQL Editor, run `supabase/migrate-v3.3.sql` **once**.
-4. Do **not** rerun `schema.sql`, `seed-members.sql`, `migrate-history.sql`, or `migrate-v3.2.sql` on your already-configured v3.2 project.
-5. If push is not configured yet, generate VAPID keys with `npx web-push generate-vapid-keys` and configure:
-   - browser-safe public key in `js/config.js` → `vapidPublicKey`
-   - `VAPID_SUBJECT`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and `CRON_SECRET` in `.env.local` and Vercel
-   - keep `SUPABASE_SECRET_KEY` server-only
-6. Run `npm install`, `npm test`, `npm run check`, then `vercel dev`.
-7. Test Notifications. Inbox is always on; all five push categories default ON. Each device still requires the user to approve OS/browser notification permission once.
-8. As Jace/admin go to **Manage → Monthly Setup** and make **September 2026** current.
-9. Confirm August becomes **Closed**, September becomes **Active**, Home/Admin display September, and unpaid August obligations still remain in Current Balance.
+## PayLater v3.3.1 rule
 
-## Reminder schedule
-
-DormFlow creates reminder Inbox events at 3 days before, 1 day before, due today, and once per overdue day. The Vercel cron runs at `00:00 UTC`, which is `08:00` Philippine time.
-
-## Important accounting invariant
-
-Changing the active month does not copy, reset, move, or delete older unpaid obligations. Prior unpaid balances remain attached to their original month and continue contributing to Current Balance until paid.
+Every installment is split economically across all four dormies. The borrower pays the provider, so the borrower's own share is automatically settled and no self-obligation is created. Only the other three shares become obligations owed to the borrower. Equal schedules auto-distribute the principal across months; Custom schedules may change installment amounts/dates but must total the principal exactly.

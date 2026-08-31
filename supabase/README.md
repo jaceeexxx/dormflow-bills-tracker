@@ -13,3 +13,7 @@ The `financial-documents` Storage bucket is private. Do not make it public. Memb
 ## Existing v3.2 household → v3.3
 
 Run `migrate-v3.3.sql` once. Do not rerun `schema.sql`, `seed-members.sql`, `migrate-history.sql`, or `migrate-v3.2.sql` on an already-configured v3.2 project. The upgrade preserves all historical obligations/payments and adds active-month plus Inbox/push behavior.
+
+## Existing v3.3 household → v3.3.1
+
+Run `migrate-v3.3.1.sql` **once** in the Supabase SQL Editor. Do not rerun `schema.sql`, `seed-members.sql`, `migrate-history.sql`, `migrate-v3.2.sql`, or `migrate-v3.3.sql` on an already-configured v3.3 project. The v3.3.1 migration is additive: it adds the beta-stabilization audit, PayLater reimbursement, edit/archive, and notification support while preserving historical obligations, payments, and the active-month/carry-forward model.

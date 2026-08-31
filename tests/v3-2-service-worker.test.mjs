@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 const sw=fs.readFileSync('service-worker.js','utf8');
 
-test('v3.3 service worker versions cache and removes older caches',()=>{
-  assert.match(sw,/dormflow-v3-3/i);
+test('v3.3.1 service worker versions cache and removes older caches',()=>{
+  assert.match(sw,/dormflow-v3-3-1/i);
   assert.match(sw,/caches\.keys\(\)/);
   assert.match(sw,/caches\.delete/);
 });

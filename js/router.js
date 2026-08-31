@@ -15,3 +15,6 @@ export function navigate(route, {replace=false}={}) {
 export function currentRoute() {
   return location.hash.replace(/^#\/?/,'') || 'home';
 }
+
+export function canNavigateBack(){return typeof history!=='undefined'&&history.length>1&&currentRoute()!=='home';}
+export function navigateBack(){if(currentRoute()==='home')return;history.back();}

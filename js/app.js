@@ -1,5 +1,5 @@
 import {hydrateIcons, icon} from './icons.js';
-import {navigate,currentRoute} from './router.js';
+import {navigate,currentRoute,navigateBack} from './router.js';
 import {bootstrapIdentity,login,logout} from './auth.js';
 import {loadMemberHome,renderMemberHome} from './member-home.js';
 import {loadMemberBalance,renderMemberBalance} from './member-balance.js';
@@ -15,14 +15,20 @@ import {renderProfile,openProfileSheet,openPaymentMethodSheet,renderHouseholdPay
 import {loadNotifications,renderNotifications,markRead,notificationRoute,requestPushForTarget} from './notifications.js';
 import {setActiveMonth,formatBillingMonth} from './months.js';
 import {pushCapabilityStatus} from './push.js';
-import {openGenericExpenseSheet,openAdminPaymentSheet,openExpenseEditSheet,duplicateExpense,renderManagePeople,renderMonthlySetup,renderReports} from './admin-generic-v3.js';
+import {openGenericExpenseSheet,openAdminPaymentSheet,openExpenseEditSheet,duplicateExpense,renderManagePeople,renderMonthlySetup,renderReports,loadAdminPayments,renderAdminPayments,openAdminPaymentEditSheet} from './admin-generic-v3.js';
 import {loadHouseholdExpenses,renderHouseholdExpenses,loadUtilities,renderUtilities} from './household-views-v3.js';
 import {openExpenseAttachmentSheet} from './attachments.js';
 import {getLockConfig,verifyLocalPin} from './app-lock.js';
 import {supabase} from './auth.js';
 import {initBankingCarousels} from './banking-carousel.js';
+import {resolveAvatar} from './household-media.js';
+import {startHouseholdRealtime,stopHouseholdRealtime} from './realtime.js';
+import {openPinVerification} from './pin-screen.js';
 
 export const state = { session:null, identity:null, online:navigator.onLine, route:currentRoute(), unlocked:false };
+const ROOT_ROUTES=new Set(['home','overview']);
+function injectBackControl(root,route){if(!root||ROOT_ROUTES.has(route))return;const screen=root.querySelector('.screen');if(!screen||screen.querySelector('[data-action="navigate-back"]'))return;screen.insertAdjacentHTML('afterbegin',`<button class="screen-back-button" type="button" data-action="navigate-back" aria-label="Go back">‹ <span>Back</span></button>`);}
+async function renderHeaderAvatar(identity){const button=document.querySelector('#profile-button'),fallback=(identity?.displayName||identity?.display_name||'D').slice(0,1).toUpperCase();if(!button)return;try{const avatar=await resolveAvatar(identity);button.innerHTML=avatar?.url?`<img class="header-avatar" src="${avatar.url}" alt="Profile photo">`:`<span id="profile-initial">${fallback}</span>`;button.classList.toggle('has-avatar',!!avatar?.url);}catch{button.innerHTML=`<span id="profile-initial">${fallback}</span>`;button.classList.remove('has-avatar');}}
 
 function identityMemberId(){return state.identity?.memberId||state.identity?.member_id;}
 function identityHouseholdId(){return state.identity?.householdId||state.identity?.household_id;}
@@ -34,6 +40,12 @@ function renderDesktopNav(role,route){
   return `<div class="nav-group"><span>MY DORMFLOW</span>${navButton('home',route,'Home','home')}${navButton('balance',route,'Balance','balance')}${navButton('payments',route,'Activity','payments')}${navButton('more',route,'More','more')}</div>`;
 }
 
+
+let realtimeRefreshTimer=null;
+function ensureHouseholdRealtime(appState=state){
+  if(!appState.session||!appState.identity){stopHouseholdRealtime();return;}
+  startHouseholdRealtime({householdId:identityHouseholdId(),memberId:identityMemberId(),onInvalidate:topics=>{clearTimeout(realtimeRefreshTimer);realtimeRefreshTimer=setTimeout(()=>{if(!state.session||document.visibilityState==='hidden')return;const route=state.route;if(topics.includes('profile'))renderHeaderAvatar(state.identity);if(topics.includes('notifications'))refreshNotificationBadge();const relevant=route==='home'||route==='overview'||topics.some(topic=>route.includes(topic)||({utilities:'utilities',expenses:'expenses',paylater:'paylater',payments:'payments',balance:'balance',month:'setup',profile:'profile',notifications:'notification'}[topic]||'')&&route.includes(({utilities:'utilities',expenses:'expenses',paylater:'paylater',payments:'payments',balance:'balance',month:'setup',profile:'profile',notifications:'notification'}[topic]||'')));if(relevant)renderApp();},140);}});
+}
 
 async function refreshNotificationBadge(){
   const button=document.querySelector('#notification-button');if(!button||!state.session)return;
@@ -48,17 +60,18 @@ async function ensureUnlocked(appState=state){
   const lock=getLockConfig(memberId);
   if(lock.mode!=='pin'){appState.unlocked=true;return true;}
   if(appState.unlocked)return true;
-  const pin=prompt('DormFlow is locked. Enter your local PIN.');
-  if(pin===null)return false;
-  if(!await verifyLocalPin(memberId,pin))throw new Error('Incorrect app PIN.');
+  const result=await openPinVerification({verify:pin=>verifyLocalPin(memberId,pin)});
+  if(result?.action==='password'){stopHouseholdRealtime();await logout(appState.identity);appState.session=null;appState.identity=null;appState.unlocked=false;return false;}
+  if(result?.action!=='pin')return false;
   appState.unlocked=true;return true;
 }
 
 async function renderAdminManage(appState,root){
   const route=appState.route;
   if(route==='manage-announcements'){root.innerHTML=renderAdminAnnouncements(await loadAdminAnnouncements());return;}
-  if(route==='manage-paylater'){root.innerHTML=renderPayLater(await loadPayLater());return;}
-  if(route==='manage-utilities'){root.innerHTML=renderUtilities(await loadUtilities());return;}
+  if(route==='manage-paylater'){root.innerHTML=renderPayLater(await loadPayLater(),{admin:true});return;}
+  if(route==='manage-utilities'){root.innerHTML=renderUtilities(await loadUtilities(),{admin:true});return;}
+  if(route==='manage-payments'){root.innerHTML=renderAdminPayments(await loadAdminPayments());return;}
   if(route==='manage-people'){root.innerHTML=await renderManagePeople();return;}
   if(route==='manage-setup'){root.innerHTML=await renderMonthlySetup(appState.identity);return;}
   if(route==='manage-reports'){root.innerHTML=await renderReports();return;}
@@ -71,7 +84,7 @@ async function renderAdminManage(appState,root){
   }
   const overview=await loadAdminOverview();
   const manageCard=(id,label,detail,iconName)=>`<button class="service-menu-card manage-service-card" data-manage="${id}" type="button"><span class="service-menu-icon">${icon(iconName)}</span><div><strong>${label}</strong><small>${detail}</small></div><b>›</b></button>`;
-  root.innerHTML=`<section class="screen banking-dashboard manage-screen"><div class="bank-page-head"><div><span class="screen-kicker">Administration</span><h1>Manage</h1></div><span class="member-status-pill">20 St. Paul</span></div><article class="bank-panel"><div class="panel-head"><div><span>Money</span><h2>Household finances</h2></div></div><div class="manage-service-grid">${manageCard('utilities','Utilities','Electricity, water and WiFi','utilities')}${manageCard('groceries','Groceries','Shared food and household items','grocery')}${manageCard('paylater','PayLater','Installments and schedules','paylater')}${manageCard('other','Other expenses','Miscellaneous shared costs','wallet')}</div></article><article class="bank-panel"><div class="panel-head"><div><span>Household</span><h2>Operations</h2></div></div><div class="manage-service-grid">${manageCard('announcements','Announcements','Post notices to roommates','announcement')}${manageCard('people','People & splits','Members and default shares','users')}${manageCard('setup','Monthly setup','Start and carry forward periods','calendar')}${manageCard('reports','Reports','Review billing periods','analytics')}<button class="service-menu-card manage-service-card" data-route="profile" type="button"><span class="service-menu-icon">${icon('settings')}</span><div><strong>Settings</strong><small>Account and security preferences</small></div><b>›</b></button></div></article><article class="bank-panel manage-expense-card"><div class="panel-head"><div><span>Current period</span><h2>Latest expenses</h2></div><button class="panel-link" data-manage="expenses">View all</button></div>${renderExpenseRows((await loadAdminExpenses(overview.period_id)).slice(0,6))}</article></section>`;
+  root.innerHTML=`<section class="screen banking-dashboard manage-screen"><div class="bank-page-head"><div><span class="screen-kicker">Administration</span><h1>Manage</h1></div><span class="member-status-pill">20 St. Paul</span></div><article class="bank-panel"><div class="panel-head"><div><span>Money</span><h2>Household finances</h2></div></div><div class="manage-service-grid">${manageCard('utilities','Utilities','Electricity, water and WiFi','utilities')}${manageCard('payments','Payments','Recorded transfers and corrections','payments')}${manageCard('groceries','Groceries','Shared food and household items','grocery')}${manageCard('paylater','PayLater','Installments and schedules','paylater')}${manageCard('other','Other expenses','Miscellaneous shared costs','wallet')}</div></article><article class="bank-panel"><div class="panel-head"><div><span>Household</span><h2>Operations</h2></div></div><div class="manage-service-grid">${manageCard('announcements','Announcements','Post notices to roommates','announcement')}${manageCard('people','People & splits','Members and default shares','users')}${manageCard('setup','Monthly setup','Start and carry forward periods','calendar')}${manageCard('reports','Reports','Review billing periods','analytics')}<button class="service-menu-card manage-service-card" data-route="profile" type="button"><span class="service-menu-icon">${icon('settings')}</span><div><strong>Settings</strong><small>Account and security preferences</small></div><b>›</b></button></div></article><article class="bank-panel manage-expense-card"><div class="panel-head"><div><span>Current period</span><h2>Latest expenses</h2></div><button class="panel-link" data-manage="expenses">View all</button></div>${renderExpenseRows((await loadAdminExpenses(overview.period_id)).slice(0,6))}</article></section>`;
 }
 
 export async function renderApp(appState=state) {
@@ -80,13 +93,14 @@ export async function renderApp(appState=state) {
   const root=document.querySelector('#view-root');
   if (!appState.session || !appState.identity) { auth.hidden=false; shell.hidden=true; return; }
   auth.hidden=true; shell.hidden=false;
+  ensureHouseholdRealtime(appState);
   const role=appState.identity.role;
   const adminPersonal=isAdminPersonalRoute(role,appState.route);
   document.querySelector('#member-bottom-nav').hidden=role==='admin'&&!adminPersonal;
   document.querySelector('#admin-bottom-nav').hidden=role!=='admin'||adminPersonal;
   const mode=document.querySelector('#mode-switcher');
   if(mode){mode.hidden=role!=='admin';mode.innerHTML=role==='admin'?`<button type="button" data-route="overview" class="${adminPersonal?'':'active'}">Admin</button><button type="button" data-route="home" class="${adminPersonal?'active':''}">Personal</button>`:'';}
-  document.querySelector('#profile-initial').textContent=(appState.identity.displayName||appState.identity.display_name||'D')[0].toUpperCase();
+  await renderHeaderAvatar(appState.identity);
   document.querySelector('#desktop-nav').innerHTML=renderDesktopNav(role,appState.route);
   root.innerHTML='<section class="screen"><div class="skeleton-block"></div><div class="skeleton-list"><i></i><i></i><i></i></div></section>';
   try {
@@ -109,6 +123,7 @@ export async function renderApp(appState=state) {
   document.querySelectorAll('.bottom-nav button').forEach(b=>b.classList.toggle('active',b.dataset.route===appState.route));
   hydrateIcons();
   initBankingCarousels(root);
+  injectBackControl(root,appState.route);
   await refreshNotificationBadge();
   await injectPushEnablePrompt(root);
 }
@@ -129,7 +144,7 @@ async function handleAdminAdd(adminAdd){
 
 async function expenseById(id){const rows=await supabase.select('expenses',`select=id,period_id,description,category,amount_cents,due_date,source_type,source_label,status,version&status=eq.active&id=eq.${id}`);return rows[0];}
 
-function openExpenseMenu(id){const sheet=document.querySelector('#sheet');document.querySelector('#sheet-content').innerHTML=`<div class="sheet-body"><div class="sheet-grabber"></div><div class="sheet-head"><h2>Expense actions</h2><button class="icon-plain" data-close-sheet>×</button></div><div class="add-sheet-list"><button data-expense-receipt="${id}">Add receipt</button><button data-expense-duplicate="${id}">Duplicate</button><button data-edit-expense="${id}">Adjust / edit</button><button class="danger-text" data-expense-delete="${id}">Delete</button></div></div>`;sheet.showModal();document.querySelector('[data-close-sheet]').onclick=()=>sheet.close();}
+function openExpenseMenu(id){const sheet=document.querySelector('#sheet');document.querySelector('#sheet-content').innerHTML=`<div class="sheet-body"><div class="sheet-grabber"></div><div class="sheet-head"><h2>Expense actions</h2><button class="icon-plain" data-close-sheet>×</button></div><div class="add-sheet-list"><button data-expense-receipt="${id}">Add receipt</button><button data-expense-duplicate="${id}">Duplicate</button><button data-edit-expense="${id}">Adjust / edit</button><button class="danger-text" data-expense-delete="${id}">Archive</button></div></div>`;sheet.showModal();document.querySelector('[data-close-sheet]').onclick=()=>sheet.close();}
 
 function bindShell(){
   hydrateIcons();document.querySelector('#notification-button').innerHTML=icon('notifications');
@@ -147,19 +162,24 @@ function bindShell(){
       const announcementToggle=e.target.closest('[data-announcement-toggle]')?.dataset.announcementToggle;if(announcementToggle){const button=e.target.closest('[data-announcement-toggle]'),active=button?.dataset.active==='true';await supabase.update('announcements',`id=eq.${announcementToggle}`,{is_active:!active,updated_by:identityMemberId(),updated_at:new Date().toISOString()});showToast(active?'Announcement deactivated':'Announcement activated');return renderApp();}
       const manage=e.target.closest('[data-manage]')?.dataset.manage;if(manage){state.route=`manage-${manage}`;return renderApp();}
       const adminAdd=e.target.closest('[data-admin-add]')?.dataset.adminAdd;if(adminAdd)return handleAdminAdd(adminAdd);
+      const paylaterEdit=e.target.closest('[data-paylater-edit]')?.dataset.paylaterEdit;if(paylaterEdit){const rows=await loadPayLater(),existing=rows.find(x=>x.id===paylaterEdit);if(!existing)throw new Error('PayLater schedule not found.');return openPayLaterSheet({identity:state.identity,existing,onDone:()=>renderApp()});}
+      const paylaterArchive=e.target.closest('[data-paylater-archive]')?.dataset.paylaterArchive;if(paylaterArchive&&confirm('Archive this PayLater schedule? Remaining obligations will stop affecting balances while payment history is preserved.')){await supabase.rpc('archive_paylater_v3',{p_account:paylaterArchive,p_reason:'Archived by admin'});showToast('PayLater archived');return renderApp();}
       const expenseMenu=e.target.closest('[data-expense-menu]')?.dataset.expenseMenu;if(expenseMenu)return openExpenseMenu(expenseMenu);
       const editId=e.target.closest('[data-edit-expense]')?.dataset.editExpense;if(editId){const expense=await expenseById(editId);if(!expense)throw new Error('Expense not found.');return openExpenseEditSheet({expense,onDone:()=>renderApp()});}
+      const editPaymentId=e.target.closest('[data-edit-admin-payment]')?.dataset.editAdminPayment;if(editPaymentId){const rows=await loadAdminPayments(),payment=rows.find(p=>p.id===editPaymentId);if(!payment)throw new Error('Payment not found.');return openAdminPaymentEditSheet({payment,onDone:()=>renderApp()});}
+      const voidPaymentId=e.target.closest('[data-void-admin-payment]')?.dataset.voidAdminPayment;if(voidPaymentId&&confirm('Void this payment? Applied balances will reopen and history will be preserved.')){await supabase.rpc('void_admin_payment_v3',{p_payment:voidPaymentId,p_reason:'Voided by admin'});showToast('Payment voided');return renderApp();}
       const receiptId=e.target.closest('[data-expense-receipt]')?.dataset.expenseReceipt;if(receiptId)return openExpenseAttachmentSheet({identity:state.identity,expenseId:receiptId,onDone:()=>showToast('Receipt uploaded')});
       const duplicateId=e.target.closest('[data-expense-duplicate]')?.dataset.expenseDuplicate;if(duplicateId){const expense=await expenseById(duplicateId);await duplicateExpense(expense,state.identity);document.querySelector('#sheet').close();showToast('Expense duplicated');return renderApp();}
-      const del=e.target.closest('[data-expense-delete]')?.dataset.expenseDelete;if(del&&confirm('Delete this expense? DormFlow will void it instead if it is financially linked.')){await smartDeleteExpense(del,'Deleted by admin');document.querySelector('#sheet').close();showToast('Expense removed');return renderApp();}
+      const del=e.target.closest('[data-expense-delete]')?.dataset.expenseDelete;if(del&&confirm('Archive this expense? Its financial history will be preserved.')){await smartDeleteExpense(del,'Archived by admin');document.querySelector('#sheet').close();showToast('Expense removed');return renderApp();}
       const month=e.target.closest('[data-month-activate],[data-month-create]')?.dataset.monthActivate||e.target.closest('[data-month-create]')?.dataset.monthCreate;if(month){if(!navigator.onLine)throw new Error('Reconnect before changing the billing month.');if(!confirm(`Make ${formatBillingMonth(month)} the current billing month? Previous unpaid balances will remain.`))return;const periodId=await setActiveMonth(month);await requestPushForTarget({targetType:'billing_period',targetId:periodId});showToast(`${formatBillingMonth(month)} is now current`);return renderApp();}
       const route=e.target.closest('[data-route]')?.dataset.route;if(route)return navigate(route);
       const action=e.target.closest('[data-action]')?.dataset.action;
+      if(action==='navigate-back')return navigateBack();
       if(action==='retry')return renderApp();
       if(action==='report-payment')return openReportPaymentSheet({identity:state.identity,onDone:()=>{state.route='payments';renderApp();}});
       if(action==='payment-method')return openPaymentMethodSheet({identity:state.identity,onDone:()=>renderApp()});
       if(action==='edit-profile')return openProfileSheet({identity:state.identity,onDone:()=>renderApp()});
-      if(action==='signout'){await logout(state.identity);state.session=null;state.identity=null;state.unlocked=false;return renderApp();}
+      if(action==='signout'){stopHouseholdRealtime();await logout(state.identity);state.session=null;state.identity=null;state.unlocked=false;return renderApp();}
       if(action==='set-app-pin'){if(await promptAndSetPin(state.identity)){state.unlocked=true;showToast('App PIN saved');}return;}
       if(action==='clear-app-lock'){clearAppLock(state.identity);state.unlocked=true;showToast('App lock turned off');return;}
       if(action==='enable-push'){await enablePush(state.identity);showToast('Push notifications enabled');await refreshNotificationBadge();return renderApp();}
@@ -168,18 +188,21 @@ function bindShell(){
     }catch(err){showToast(err.message||String(err));}
   });
   window.addEventListener('dormflow:navigate',e=>{state.route=e.detail.route; renderApp();});
+  window.addEventListener('dormflow:toast',e=>showToast(e.detail?.message||'Saved'));
+  window.addEventListener('popstate',()=>{state.route=currentRoute();renderApp();});
   window.addEventListener('online',()=>{state.online=true;document.querySelector('#offline-strip').hidden=true;if(state.session)renderApp();});
   window.addEventListener('offline',()=>{state.online=false;document.querySelector('#offline-strip').hidden=false;});
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&state.session&&navigator.onLine)renderApp();});
 }
 
-async function registerPwa(){if('serviceWorker' in navigator){try{await navigator.serviceWorker.register('/service-worker.js');}catch{}}}
+function showForegroundPush(payload={}){const existing=document.querySelector('.foreground-push-banner');if(existing)existing.remove();const banner=document.createElement('button');banner.type='button';banner.className='foreground-push-banner';banner.innerHTML=`<strong>${String(payload.title||'DormFlow')}</strong><span>${String(payload.body||'You have a new notification.')}</span>`;banner.onclick=()=>{const hash=new URL(payload.url||'/#/notifications',location.origin).hash.replace(/^#\/?/,'');banner.remove();if(hash){state.route=hash;navigate(hash);renderApp();}};document.body.append(banner);setTimeout(()=>banner.remove(),6000);}
+async function registerPwa(){if('serviceWorker' in navigator){navigator.serviceWorker.addEventListener('message',event=>{if(event.data?.type==='dormflow:push')showForegroundPush(event.data.payload||{});});try{await navigator.serviceWorker.register('/service-worker.js');}catch{}}}
 
 async function boot(){
   bindShell();registerPwa();
   const form=document.querySelector('#signin-form');
   form.addEventListener('submit',async e=>{e.preventDefault();const error=document.querySelector('#signin-error');const submit=document.querySelector('#signin-submit');error.hidden=true;submit.disabled=true;submit.textContent='Signing in…';try{Object.assign(state,await login(form.email.value.trim(),form.password.value));state.unlocked=true;renderApp();}catch(err){error.textContent=err.message||'Could not sign in.';error.hidden=false;}finally{submit.disabled=false;submit.textContent='Sign in';}});
-  document.querySelector('#signout-button').addEventListener('click',async()=>{await logout(state.identity);state.session=null;state.identity=null;state.unlocked=false;renderApp();});
+  document.querySelector('#signout-button').addEventListener('click',async()=>{stopHouseholdRealtime();await logout(state.identity);state.session=null;state.identity=null;state.unlocked=false;renderApp();});
   try{Object.assign(state,await bootstrapIdentity());if(state.session&&state.identity)await ensureUnlocked(state);}catch(err){state.session=null;state.identity=null;state.unlocked=false;}
   renderApp();
 }

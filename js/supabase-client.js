@@ -7,7 +7,7 @@ async function readJson(response){
   return body;
 }
 
-export function createSupabaseClient({url,key,fetcher=globalThis.fetch,storage=safeStorage(),requestTimeoutMs=15000}={}){
+export function createSupabaseClient({url,key,fetcher=globalThis.fetch,storage=safeStorage(),requestTimeoutMs=15000,WebSocketImpl=globalThis.WebSocket}={}){
   const base=String(url||'').replace(/\/$/,'');
   let session=storage?.getItem(SESSION_KEY)?JSON.parse(storage.getItem(SESSION_KEY)):null;
   const headers=(extra={})=>({apikey:key,'Content-Type':'application/json',...(session?.access_token?{Authorization:`Bearer ${session.access_token}`}:{}),...extra});
@@ -71,5 +71,26 @@ export function createSupabaseClient({url,key,fetcher=globalThis.fetch,storage=s
     const absolute=raw.startsWith('http')?raw:raw.startsWith('/storage/v1')?`${base}${raw}`:`${base}/storage/v1${raw}`;
     return {...data,signedURL:absolute,signedUrl:absolute};
   }
-  return {signIn,signOut,refreshSession,getSession:()=>session,getIdentity,rpc,select,insert,update,remove,upload,removeStorageObject,createSignedUrl};
+  function createRealtimeChannel({name='household',changes=[],onChange=()=>{},onStatus=()=>{}}={}){
+    if(!WebSocketImpl||!base||!key)return {close(){},status:'unsupported'};
+    const wsBase=base.replace(/^http/i,'ws');let socket=null,heartbeat=null,reconnectTimer=null,active=true,ref=0;
+    const topic=`realtime:${name}`;
+    const nextRef=()=>String(++ref);
+    const send=(event,payload={},target=topic)=>{if(socket?.readyState===1||socket?.readyState===undefined)socket.send(JSON.stringify({topic:target,event,payload,ref:nextRef(),join_ref:'1'}));};
+    const connect=()=>{
+      if(!active)return;
+      socket=new WebSocketImpl(`${wsBase}/realtime/v1/websocket?apikey=${encodeURIComponent(key)}&vsn=1.0.0`);
+      socket.onopen=()=>{
+        onStatus('connected');
+        send('phx_join',{config:{broadcast:{ack:false,self:false},presence:{enabled:false},postgres_changes:changes.map(change=>({event:change.event||'*',schema:change.schema||'public',table:change.table,...(change.filter?{filter:change.filter}:{})}))},access_token:session?.access_token||null});
+        heartbeat=setInterval(()=>send('heartbeat',{},'phoenix'),25000);
+      };
+      socket.onmessage=event=>{try{const message=JSON.parse(event.data);if(message.event==='postgres_changes'){const data=message.payload?.data||message.payload||{};onChange({...data,table:data.table||message.payload?.table,eventType:data.type||data.eventType||data.event});}}catch{}};
+      socket.onerror=()=>onStatus('error');
+      socket.onclose=()=>{clearInterval(heartbeat);heartbeat=null;onStatus('closed');if(active)reconnectTimer=setTimeout(connect,1800);};
+    };
+    connect();
+    return {close(){active=false;clearInterval(heartbeat);clearTimeout(reconnectTimer);try{send('phx_leave',{});}catch{}try{socket?.close();}catch{}},get socket(){return socket;}};
+  }
+  return {signIn,signOut,refreshSession,getSession:()=>session,getIdentity,rpc,select,insert,update,remove,upload,removeStorageObject,createSignedUrl,createRealtimeChannel};
 }

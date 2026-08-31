@@ -17,7 +17,7 @@ async function exists(f){try{await access(path.join(root,f));return true;}catch{
 test('release metadata describes only the fresh authenticated v3 app',async()=>{
   const pkg=JSON.parse(await read('package.json'));
   const readme=await read('README.md');
-  assert.equal(pkg.version,'3.3.0');
+  assert.equal(pkg.version,'3.3.1');
   assert.match(pkg.scripts.test,/v3-\*\.test\.mjs/);
   assert.match(readme,/DormFlow v3/i);
   assert.match(readme,/schema\.sql[\s\S]*four Auth accounts[\s\S]*seed-members\.sql[\s\S]*migrate-history\.sql/i);
@@ -48,9 +48,9 @@ test('migration guide has one clean Supabase sequence and exact August checks',a
 
 test('release script targets the v3 ZIP and validates its contents',async()=>{
   const script=await read('scripts/package-release.mjs');
-  assert.match(script,/DormFlow_v3_3_Notifications_Active_Month_PWA_20_St_Paul\.zip/);
+  assert.match(script,/DormFlow_v3_3_1_Beta_Stabilization_PWA_20_St_Paul\.zip/);
   assert.match(script,/unzip/);
-  assert.match(script,/migrate-v3\.3\.sql/i);
+  assert.match(script,/migrate-v3\.3\.1\.sql/i);
   assert.match(script,/SUPABASE_SECRET_KEY|secret-like/i);
   assert.match(script,/assets\/qr|admin\.html|migrate-v2\.2/);
 });

@@ -1,60 +1,53 @@
-# DormFlow v3.3 · 20 St. Paul
+# DormFlow v3.3.1 · 20 St. Paul
 
-DormFlow v3.3 is a private installable household-finance PWA for four roommates. Everyone signs in with a separate Supabase Auth account; Jace is the admin and also remains a normal household member, while Kean, Aerian, and Aexy are members.
+DormFlow v3.3.1 is the beta-stabilization release of the private household-finance PWA for four roommates. It keeps the authenticated Supabase ledger and v3.3 active-month/notification model, while fixing the mobile navigation, profile/media lifecycle, Admin management, real-time member refresh, PayLater reimbursement accounting, app-lock PIN experience, and iPhone push behavior found during beta testing.
 
-The app is designed for iOS, Android, and desktop from one Vercel deployment. It uses a fresh Supabase project, PostgreSQL/RLS for privacy, private Storage for receipts, optional Web Push, and a centavo-safe relational ledger.
+## What v3.3.1 adds
 
-## What v3.3 includes
+- Native Back controls on secondary screens and touch-first swipe/snap banking cards on phones.
+- Mobile-safe DormFlow header/logo and uploaded profile photo in the top-right account control.
+- Profile photo crop/preview before upload; saved avatar state refreshes everywhere it is used.
+- One Save lifecycle: **Saving… → Successfully saved → close → refreshed state**. Failed writes remain open with entered values preserved.
+- Shared responsive rows for Settings, Who Pays Whom, Notifications, and Admin records so text/actions no longer overlap on narrow phones.
+- Supabase Realtime invalidation for Utilities, Expenses, Payments, PayLater, billing month, profiles/payment methods, announcements, balances, and notifications. Realtime triggers a refetch; PostgreSQL remains the source of truth.
+- Admin Edit + safe Archive/Void management with audit history preserved.
+- PayLater Equal or Custom installment schedules. Every installment is split economically across all four dormies; the borrower’s own 25% is automatically settled and only the other three shares become obligations owed to the borrower.
+- Six-digit banking-style local PIN screen with keypad, auto-submit, error feedback, and **Use password instead**.
+- Foreground push becomes an in-app banner; background/closed PWA uses the system notification. Expired 404/410 push subscriptions are deactivated automatically.
+- All v3.3 behavior remains: one active billing month, August carry-forward, authoritative Inbox, default-ON push categories, and 8:00 AM PHT due reminders.
 
-- One authenticated app for every roommate, with role-aware member and admin experiences.
-- Personalized member Home, Balance, Payments, Notifications, Utilities, Expenses, PayLater, Profile, and Security.
-- Hybrid privacy: shared household totals are visible to all members; detailed receipts, payment references, credits, and personal histories are limited to the member and admin through RLS.
-- Admin mobile navigation: **Overview / + Add / Review / Manage**.
-- Utilities in one flow for Electricity/Meralco, Water, and PLDT WiFi; admin is the default payer and the checked-member split is reviewed before saving.
-- Grocery, PayLater, other-expense, payment, announcement, people/split, month-setup, report, edit, duplicate, attachment, and Smart Delete/void workflows.
-- Member payment claims with private receipt upload; balances change only after admin verification.
-- Authoritative in-app Inbox plus optional device push. Push categories default ON; OS/browser permission is approved once by the user.
-- Banking-style reminders at 3 days before, 1 day before, due today, and once daily while overdue at 8:00 AM Philippine time.
-- Admin-controlled active billing month with exactly one current month; prior unpaid obligations continue into Current Balance without being copied or reset.
-- Installable PWA shell, custom DormFlow brand mark/icons, safe offline last-known summary, and no offline financial writes.
-- Optional local app PIN in addition to the persistent Supabase session.
-- Idempotency and version checks for important financial writes.
+## Upgrade an existing v3.3 household to v3.3.1
 
-## Upgrade an existing v3.2 household to v3.3
-
-If this Supabase project already has the v3.2 household, four linked Auth users, August history, private media buckets, and MariBank payment profiles, use this exact order:
+If your current Supabase project is already on DormFlow v3.3, use this exact order:
 
 1. Back up/confirm the existing Supabase project.
-2. Run `supabase/migrate-v3.3.sql` **once** in Supabase SQL Editor.
-3. **Do not rerun** `supabase/schema.sql`, `supabase/seed-members.sql`, `supabase/migrate-history.sql`, or `supabase/migrate-v3.2.sql` on a project that is already at v3.2.
-4. Configure VAPID/cron values for push delivery if not already configured.
-5. Run `npm install`, `npm test`, and `npm run check`, then test with `vercel dev`.
-6. In Admin → Manage → Monthly Setup, make **September 2026** current. DormFlow closes the previous active month but leaves every unpaid August obligation attached to August and included in the member's Current Balance.
-7. Confirm Home/Admin show September 2026, August is Closed, September is Active, and the carried outstanding balance remains visible.
+2. Run `supabase/migrate-v3.3.1.sql` **once** in Supabase SQL Editor.
+3. **Do not rerun** `supabase/schema.sql`, `supabase/seed-members.sql`, `supabase/migrate-history.sql`, `supabase/migrate-v3.2.sql`, or `supabase/migrate-v3.3.sql` on a project already at v3.3.
+4. Deploy the v3.3.1 application files to Vercel and keep the existing Production environment variables/VAPID pair.
+5. Run `npm install`, `npm test`, and `npm run check` before deployment.
+6. After deployment, hard-refresh/reopen the installed PWA once so the `dormflow-v3-3-1` service-worker cache takes control.
+7. Beta-check Admin Add/Edit/Archive, PayLater, profile crop/avatar, realtime member refresh, six-digit PIN, and foreground/background push.
 
-The v3.3 migration is additive. It adds the one-active-month invariant, month/balance notification preference, push delivery audit timestamps, active-month RPC/read-model fields, and Inbox-first financial event behavior without reseeding or rewriting historical obligations.
+The v3.3.1 migration is additive. It adds audit-safe management fields/functions, the PayLater-installment obligation link, four-way PayLater reimbursement obligations, and v3.3.1 event notifications. It does not reseed members or rewrite historical August obligations.
 
-If an older authenticated v3 project has **not** yet run `migrate-v3.2.sql`, upgrade to v3.2 first, then run `migrate-v3.3.sql`.
+If a project is still on v3.2, run `migrate-v3.3.sql` first and then `migrate-v3.3.1.sql`. Do not skip versions or rerun earlier migrations.
 
 ## Fresh Supabase setup
 
-Use a **new Supabase project**. Do not run any DormFlow v1/v2 migration.
+For a new Supabase project:
 
 1. Run `supabase/schema.sql` once.
-2. In Supabase Authentication, manually create the four Auth accounts with different passwords and disable public sign-ups.
-3. Run `supabase/seed-members.sql`. It is preconfigured for `jace@gmail.com`, `kean@gmail.com`, `aerian@gmail.com`, and `aexy@gmail.com`. Confirm Jace = `admin`; Kean/Aerian/Aexy = `member`.
+2. Create the four Auth accounts manually in Supabase Authentication and disable public sign-ups.
+3. Run `supabase/seed-members.sql` once.
 4. Run `supabase/migrate-history.sql` once.
-5. Confirm the August 2026 verification queries return:
-   - total obligations: **2,394,422 centavos = ₱23,944.22**
-   - settled: **2,206,229 centavos = ₱22,062.29**
-   - outstanding: **188,193 centavos = ₱1,881.93**
-6. Follow `docs/DEPLOYMENT.md` for browser-safe configuration, Vercel secrets, push setup, and device installation.
+5. Verify August 2026 remains **₱23,944.22 total / ₱22,062.29 settled / ₱1,881.93 outstanding**.
+6. Follow `docs/DEPLOYMENT.md` for Vercel, VAPID, cron, and iPhone installation.
 
-Detailed migration notes are in `docs/MIGRATION.md`.
+The fresh `schema.sql` already contains the final v3.3.1 schema/RPC definitions. Do **not** run the additive upgrade migrations after a fresh schema install.
 
 ## Browser-safe configuration
 
-Edit `js/config.js` before deployment:
+`js/config.js` contains only values safe for browser delivery:
 
 ```js
 export const config = Object.freeze({
@@ -65,11 +58,9 @@ export const config = Object.freeze({
 });
 ```
 
-Only the Supabase project URL, publishable key, household slug, and public VAPID key belong in browser code.
+Never put `SUPABASE_SECRET_KEY`, a VAPID private key, `CRON_SECRET`, passwords, or private receipt data in browser code or Git.
 
 ## Run locally
-
-Install the one server dependency and use Vercel Dev so the PWA and `/api` functions run together:
 
 ```bash
 npm install
@@ -78,27 +69,22 @@ npm run check
 vercel dev
 ```
 
-Create `.env.local` from `.env.example` before testing push/reminders. The app itself can authenticate against Supabase once `js/config.js` is configured.
+For Vercel Dev, link/pull the Development environment as described in `docs/DEPLOYMENT.md`.
 
-## Main files
+## Main upgrade files
 
-- `index.html`, `css/styles.css`, `js/app.js` — authenticated PWA shell and premium responsive UI.
-- `js/auth.js`, `js/supabase-client.js` — Supabase Auth/session/data client.
-- `js/member-*.js` — personalized member experience.
-- `js/admin-*.js`, `js/paylater-v3.js`, `js/announcements-v3.js` — admin workflows.
-- `manifest.webmanifest`, `service-worker.js`, `offline.html`, `assets/brand/` — installable PWA assets.
-- `supabase/schema.sql` — fresh v3 schema, RLS, private Storage, read models, and financial RPCs.
-- `supabase/seed-members.sql` — links the four manually-created Auth accounts to household roles.
-- `supabase/migrate-history.sql` — clean historical import for fresh v3 installs.
-- `supabase/migrate-v3.2.sql` — prior additive upgrade for profile/media/payment-profile support.
-- `supabase/migrate-v3.3.sql` — one-time additive upgrade for notifications and active-month control on an existing v3.2 household.
-- `api/` — push subscription/delivery, target-based event push, and scheduled reminder server functions.
+- `supabase/migrate-v3.3.1.sql` — one-time additive upgrade from an existing v3.3 household.
+- `supabase/schema.sql` — fresh v3.3.1 schema.
+- `js/realtime.js` — focused household invalidation/refetch layer.
+- `js/form-flow.js`, `js/avatar-cropper.js`, `js/pin-screen.js` — shared beta-stabilization UI behavior.
+- `js/paylater-v3.js` — Equal/Custom schedules and Admin management UI.
+- `service-worker.js`, `lib/push-server.js`, `api/push-event.js`, `api/reminders.js` — foreground/background delivery and expired-subscription cleanup.
 
 ## Security rules
 
 - No public registration UI.
-- Never commit `.env.local`, a Supabase secret/service-role key, VAPID private key, CRON secret, passwords, or private receipts.
-- `financial-documents` is a private Storage bucket; receipts are accessed with authorization/signed URLs.
-- Sign-out clears the user-specific offline summary and local app-lock state.
-- The service worker does not durably cache Supabase/API financial responses and uses network-first refresh for release-critical HTML/CSS/JS.
-- Financial writes are blocked while offline.
+- Private receipts remain in `financial-documents`; household avatars/payment QR media remain in private `household-media`.
+- RLS remains the privacy boundary for member data.
+- Financial writes are blocked offline.
+- Realtime never calculates balances from event payloads; it causes authoritative Supabase refetches.
+- Financial archive/void operations preserve audit/payment history.

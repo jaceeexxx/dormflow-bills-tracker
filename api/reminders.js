@@ -1,5 +1,5 @@
 import {serviceRequest} from '../lib/server-supabase.js';
-import {sendPush} from '../lib/push-server.js';
+import {sendPushWithCleanup} from '../lib/push-server.js';
 
 const TZ='Asia/Manila';
 function ymdInManila(date=new Date()){
@@ -27,9 +27,9 @@ export default async function handler(req,res){
       if(!note){const existing=await serviceRequest(`/rest/v1/notifications?select=id,push_attempted_at,push_sent_at&recipient_member_id=eq.${o.debtor_member_id}&dedupe_key=eq.${encodeURIComponent(key)}&limit=1`);note=existing?.[0];}
       if(!note||note.push_attempted_at)continue;
       const prefs=await serviceRequest(`/rest/v1/notification_preferences?select=due_reminders&member_id=eq.${o.debtor_member_id}&limit=1`);if(prefs?.[0]?.due_reminders===false)continue;
-      const subs=await serviceRequest(`/rest/v1/push_subscriptions?select=endpoint,p256dh,auth_secret&member_id=eq.${o.debtor_member_id}&is_active=eq.true`);
+      const subs=await serviceRequest(`/rest/v1/push_subscriptions?select=id,endpoint,p256dh,auth_secret&member_id=eq.${o.debtor_member_id}&is_active=eq.true`);
       attempted++;let noteDelivered=0;
-      for(const sub of subs){try{await sendPush(sub,{title,body,notificationId:note.id,url:'/#/balance'});delivered++;noteDelivered++;}catch{}}
+      for(const sub of subs){try{const result=await sendPushWithCleanup(sub,{title,body,notificationId:note.id,url:'/#/balance'});if(result.delivered){delivered++;noteDelivered++;}}catch{}}
       const stamp=new Date().toISOString();await serviceRequest(`/rest/v1/notifications?id=eq.${note.id}`,{method:'PATCH',body:{push_attempted_at:stamp,...(noteDelivered?{push_sent_at:stamp}:{})}});
     }
     res.status(200).json({ok:true,timeZone:TZ,calendarDate:today,created,attempted,delivered});

@@ -1,4 +1,4 @@
-const CACHE_NAME='dormflow-v3-3-shell-1';
+const CACHE_NAME='dormflow-v3-3-1-shell-1';
 const STATIC_ASSETS=[
   '/','/index.html','/offline.html','/css/styles.css','/manifest.webmanifest',
   '/js/app.js','/js/router.js','/js/icons.js','/js/config.js','/js/auth.js','/js/supabase-client.js',
@@ -57,7 +57,12 @@ self.addEventListener('fetch',event=>{
 self.addEventListener('push',event=>{
   let data={title:'DormFlow',body:'You have a new notification.',url:'/#/notifications'};
   try{data={...data,...event.data.json()};}catch{}
-  event.waitUntil(self.registration.showNotification(data.title,{body:data.body,icon:'/assets/brand/icon-192.png',badge:'/assets/brand/icon-192.png',data:{url:data.url||'/#/notifications'},tag:data.notificationId||undefined}));
+  event.waitUntil((async()=>{
+    const windows=await self.clients.matchAll({type:'window',includeUncontrolled:true});
+    const visible=windows.filter(client=>client.visibilityState==='visible');
+    if(visible.length){for(const client of visible)client.postMessage({type:'dormflow:push',payload:data});return;}
+    await self.registration.showNotification(data.title,{body:data.body,icon:'/assets/brand/icon-192.png',badge:'/assets/brand/icon-192.png',data:{url:data.url||'/#/notifications'},tag:data.notificationId||undefined});
+  })());
 });
 self.addEventListener('notificationclick',event=>{
   event.notification.close();

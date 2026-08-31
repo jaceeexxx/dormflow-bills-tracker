@@ -27,3 +27,15 @@ test('local pin verifier is salted and deterministic for same inputs', async()=>
   assert.notEqual(one,three);
   assert.notEqual(one,'4826');
 });
+
+test('auth requests time out instead of leaving sign in pending forever', async()=>{
+  const fetcher=async()=>new Promise(()=>{});
+  const client=createSupabaseClient({url:'https://example.supabase.co',key:'sb_publishable_test',fetcher,storage:null,requestTimeoutMs:20});
+  await assert.rejects(client.signIn('jace@example.com','secret'),/taking too long/i);
+});
+
+test('network fetch failures become a useful Supabase reachability error', async()=>{
+  const fetcher=async()=>{throw new TypeError('Failed to fetch');};
+  const client=createSupabaseClient({url:'https://example.supabase.co',key:'sb_publishable_test',fetcher,storage:null,requestTimeoutMs:20});
+  await assert.rejects(client.signIn('jace@example.com','secret'),/could not reach supabase/i);
+});
