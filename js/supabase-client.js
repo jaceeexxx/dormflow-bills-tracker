@@ -7,13 +7,33 @@ async function readJson(response){
   return body;
 }
 
-export function createSupabaseClient({url,key,fetcher=globalThis.fetch,storage=safeStorage()}={}){
+export function createSupabaseClient({url,key,fetcher=globalThis.fetch,storage=safeStorage(),requestTimeoutMs=15000}={}){
   const base=String(url||'').replace(/\/$/,'');
   let session=storage?.getItem(SESSION_KEY)?JSON.parse(storage.getItem(SESSION_KEY)):null;
   const headers=(extra={})=>({apikey:key,'Content-Type':'application/json',...(session?.access_token?{Authorization:`Bearer ${session.access_token}`}:{}),...extra});
+  async function fetchWithTimeout(input,init={}){
+    const timeout=Math.max(100,Number(requestTimeoutMs)||15000);
+    const controller=typeof AbortController!=='undefined'?new AbortController():null;
+    let timer;
+    const timeoutPromise=new Promise((_,reject)=>{
+      timer=setTimeout(()=>{
+        controller?.abort();
+        const error=new Error('Supabase is taking too long to respond. Check your connection and try again.');
+        error.code='DORMFLOW_TIMEOUT';
+        reject(error);
+      },timeout);
+    });
+    try{
+      return await Promise.race([Promise.resolve(fetcher(input,{...init,...(controller?{signal:controller.signal}:{})})),timeoutPromise]);
+    }catch(error){
+      if(error?.code==='DORMFLOW_TIMEOUT'||error?.name==='AbortError') throw new Error('Supabase is taking too long to respond. Check your connection and try again.');
+      if(error instanceof TypeError||/failed to fetch|networkerror|network request failed/i.test(String(error?.message||error))) throw new Error('Could not reach Supabase. Check your internet connection, VPN/DNS, or browser extensions and try again.');
+      throw error;
+    }finally{clearTimeout(timer);}
+  }
 
   async function request(path,{method='GET',body,headers:extra={}}={}){
-    const res=await fetcher(`${base}${path}`,{method,headers:headers(extra),body:body===undefined?undefined:JSON.stringify(body)});
+    const res=await fetchWithTimeout(`${base}${path}`,{method,headers:headers(extra),body:body===undefined?undefined:JSON.stringify(body)});
     return readJson(res);
   }
   async function signIn(email,password){
@@ -37,11 +57,11 @@ export function createSupabaseClient({url,key,fetcher=globalThis.fetch,storage=s
   async function update(table,query,patch){return request(`/rest/v1/${table}?${query}`,{method:'PATCH',body:patch,headers:{Prefer:'return=representation'}});}
   async function remove(table,query){return request(`/rest/v1/${table}?${query}`,{method:'DELETE',headers:{Prefer:'return=representation'}});}
   async function upload(bucket,path,file){
-    const res=await fetcher(`${base}/storage/v1/object/${bucket}/${path}`,{method:'POST',headers:{apikey:key,Authorization:`Bearer ${session?.access_token||''}`,'Content-Type':file.type||'application/octet-stream','x-upsert':'false'},body:file});
+    const res=await fetchWithTimeout(`${base}/storage/v1/object/${bucket}/${path}`,{method:'POST',headers:{apikey:key,Authorization:`Bearer ${session?.access_token||''}`,'Content-Type':file.type||'application/octet-stream','x-upsert':'false'},body:file});
     return readJson(res);
   }
   async function removeStorageObject(bucket,path){
-    const res=await fetcher(`${base}/storage/v1/object/${bucket}/${path}`,{method:'DELETE',headers:{apikey:key,Authorization:`Bearer ${session?.access_token||''}`}});
+    const res=await fetchWithTimeout(`${base}/storage/v1/object/${bucket}/${path}`,{method:'DELETE',headers:{apikey:key,Authorization:`Bearer ${session?.access_token||''}`}});
     if(res.status===204)return true;
     return readJson(res);
   }
