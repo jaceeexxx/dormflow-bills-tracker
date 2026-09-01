@@ -1,5 +1,5 @@
 export const ADMIN_ADD_ACTIONS=[
-  {id:'utility',label:'Utility bill'},{id:'grocery',label:'Grocery'},{id:'paylater',label:'PayLater'},
+  {id:'utility',label:'Utility bill'},{id:'rent',label:'Rent'},{id:'grocery',label:'Grocery'},{id:'paylater',label:'PayLater'},
   {id:'other',label:'Other expense'},{id:'payment',label:'Record payment'},{id:'announcement',label:'Announcement'}
 ];
 export function equalSplit(totalCents,memberIds){if(!memberIds?.length)throw new Error('Select at least one member.');const total=Number(totalCents);const base=Math.floor(total/memberIds.length);let extra=total-base*memberIds.length;return memberIds.map(member_id=>({member_id,amount_cents:base+(extra-->0?1:0)}));}

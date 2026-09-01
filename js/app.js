@@ -15,7 +15,7 @@ import {renderProfile,openProfileSheet,openPaymentMethodSheet,renderHouseholdPay
 import {loadNotifications,renderNotifications,markRead,notificationRoute,queuePushForTarget} from './notifications.js';
 import {setActiveMonth,formatBillingMonth} from './months.js';
 import {pushCapabilityStatus,sendPushTest} from './push.js';
-import {openGenericExpenseSheet,openAdminPaymentSheet,openExpenseEditSheet,duplicateExpense,renderManagePeople,renderMonthlySetup,renderReports,loadAdminPayments,renderAdminPayments,openAdminPaymentEditSheet} from './admin-generic-v3.js';
+import {openGenericExpenseSheet,openRentSheet,openAdminPaymentSheet,openExpenseEditSheet,duplicateExpense,renderManagePeople,renderMonthlySetup,renderReports,loadAdminPayments,renderAdminPayments,openAdminPaymentEditSheet} from './admin-generic-v3.js';
 import {loadHouseholdExpenses,renderHouseholdExpenses,loadUtilities,renderUtilities} from './household-views-v3.js';
 import {openExpenseAttachmentSheet} from './attachments.js';
 import {getLockConfig,verifyLocalPin} from './app-lock.js';
@@ -135,6 +135,7 @@ async function handleAdminAdd(adminAdd){
   const sheet=document.querySelector('#sheet');if(sheet.open)sheet.close();
   const overview=await loadAdminOverview();const done=()=>{state.route='overview';renderApp();};
   if(adminAdd==='utility') return openUtilitySheet({identity:state.identity,periodId:overview.periodId,onDone:done});
+  if(adminAdd==='rent') return openRentSheet({identity:state.identity,periodId:overview.periodId,onDone:done});
   if(adminAdd==='grocery') return openGenericExpenseSheet({identity:state.identity,periodId:overview.periodId,kind:'grocery',onDone:done});
   if(adminAdd==='other') return openGenericExpenseSheet({identity:state.identity,periodId:overview.periodId,kind:'other',onDone:done});
   if(adminAdd==='payment') return openAdminPaymentSheet({identity:state.identity,onDone:done});

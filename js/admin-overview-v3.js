@@ -8,6 +8,7 @@ import {householdMemberDirectory} from './member-directory.js';
 
 const palette=['#0f6b57','#f39a3d','#294c7a','#b7a164'];
 const categoryIcon=label=>label.includes('Housing')?'utilities':label.includes('Grocer')?'grocery':label.includes('PayLater')?'paylater':'wallet';
+const addActionIcon=action=>action.id==='rent'?'rent':action.id==='utility'?'utilities':action.id==='grocery'?'grocery':action.id==='paylater'?'paylater':action.id==='other'?'wallet':action.id==='payment'?'transfer':'announcement';
 
 export async function loadAdminOverview(){
   const raw=await supabase.rpc('admin_overview_v3');const base=Array.isArray(raw)?raw[0]:raw;
@@ -34,7 +35,7 @@ function donutGradient(categories=[]){
   return `conic-gradient(${stops.join(',')})`;
 }
 
-function quickAction(action){return `<button type="button" class="bank-quick-action" data-admin-add="${action.id}"><span class="quick-icon">${icon(action.id==='utility'?'utilities':action.id==='grocery'?'grocery':action.id==='paylater'?'paylater':action.id==='other'?'wallet':action.id==='payment'?'transfer':'announcement')}</span><strong>${escapeHtml(action.label.replace(' bill',''))}</strong></button>`;}
+function quickAction(action){return `<button type="button" class="bank-quick-action" data-admin-add="${action.id}"><span class="quick-icon">${icon(addActionIcon(action))}</span><strong>${escapeHtml(action.label.replace(' bill',''))}</strong></button>`;}
 
 function settlementRow(row){
   const net=row.netPositionCents||0;
@@ -55,7 +56,7 @@ export function renderAdminOverview(vm={}){
     </section>
 
     <section class="bank-quick-actions admin-quick-actions">
-      ${ADMIN_ADD_ACTIONS.slice(0,5).map(quickAction).join('')}
+      ${ADMIN_ADD_ACTIONS.slice(0,6).map(quickAction).join('')}
       <button type="button" class="bank-quick-action" data-action="open-add"><span class="quick-icon">${icon('more')}</span><strong>More</strong></button>
     </section>
 
@@ -77,4 +78,4 @@ export function renderAdminOverview(vm={}){
   </section>`;
 }
 
-export function renderAddSheet(){return `<div class="sheet-body"><div class="sheet-grabber"></div><div class="sheet-head"><div><span class="sheet-kicker">Quick add</span><h2>Choose an action</h2></div><button class="icon-plain" data-close-sheet type="button">×</button></div><div class="add-sheet-grid">${ADMIN_ADD_ACTIONS.map(a=>`<button type="button" data-admin-add="${a.id}"><span class="quick-icon">${icon(a.id==='utility'?'utilities':a.id==='grocery'?'grocery':a.id==='paylater'?'paylater':a.id==='other'?'wallet':a.id==='payment'?'transfer':'announcement')}</span><span>${escapeHtml(a.label)}</span><b>›</b></button>`).join('')}</div></div>`;}
+export function renderAddSheet(){return `<div class="sheet-body"><div class="sheet-grabber"></div><div class="sheet-head"><div><span class="sheet-kicker">Quick add</span><h2>Choose an action</h2></div><button class="icon-plain" data-close-sheet type="button">×</button></div><div class="add-sheet-grid">${ADMIN_ADD_ACTIONS.map(a=>`<button type="button" data-admin-add="${a.id}"><span class="quick-icon">${icon(addActionIcon(a))}</span><span>${escapeHtml(a.label)}</span><b>›</b></button>`).join('')}</div></div>`;}

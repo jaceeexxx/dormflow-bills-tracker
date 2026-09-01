@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import {equalSplit,buildUtilityPayload,ADMIN_ADD_ACTIONS} from '../js/admin-actions.js';
 
 test('admin add sheet exposes approved mobile actions',()=>{
- assert.deepEqual(ADMIN_ADD_ACTIONS.map(x=>x.label),['Utility bill','Grocery','PayLater','Other expense','Record payment','Announcement']);
+ assert.deepEqual(ADMIN_ADD_ACTIONS.map(x=>x.label),['Utility bill','Rent','Grocery','PayLater','Other expense','Record payment','Announcement']);
 });
 test('equal split reconciles exact centavos deterministically',()=>{
  const rows=equalSplit(218437,['jace','kean','aerian','aexy']);

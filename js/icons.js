@@ -9,6 +9,7 @@ const paths = {
   notifications:'<path d="M6.7 9.2a5.3 5.3 0 0 1 10.6 0c0 5 2 5.3 2 6.8H4.7c0-1.5 2-1.8 2-6.8Z"/><path d="M10 19h4"/>',
   receipt:'<path d="M7 4h10v16l-2-1.4-2 1.4-2-1.4L9 20l-2-1.4z"/><path d="M9.5 9h5M9.5 13h5"/>',
   utilities:'<path d="M8.1 3.8h7.8l-1.7 5.3h3.1L10 20.2l1.4-7H7.8z"/><path d="M5 20h14"/>',
+  rent:'<path d="M4.5 11.2 12 4.8l7.5 6.4"/><path d="M6.2 10.6v8.7h11.6v-8.7"/><path d="M9.1 19.3v-5.2h5.8v5.2"/><path d="M8.2 8.3V5.6h3"/>',
   grocery:'<path d="M5.2 8.5h13.6l-1 9.1a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8z"/><path d="M8.3 8.5 10 4.7M15.7 8.5 14 4.7M8.5 12.5v2.8M12 12.5v2.8M15.5 12.5v2.8"/>',
   paylater:'<rect x="4" y="5" width="16" height="14" rx="3"/><path d="M7.5 9h9M8 14h3M15.5 13.2v3.2M13.9 14.8h3.2"/>',
   announcement:'<path d="M4.5 10.3v3.4h3.2l6.8 3.2V7.1l-6.8 3.2z"/><path d="M7.7 13.7 8.8 19M17 9.2c1.2.8 1.8 1.7 1.8 2.8s-.6 2-1.8 2.8"/>',

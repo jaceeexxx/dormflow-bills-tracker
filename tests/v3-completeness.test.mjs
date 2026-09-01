@@ -7,8 +7,8 @@ const payments=fs.readFileSync('js/member-payments.js','utf8');
 const people=fs.readFileSync('js/people-settings.js','utf8');
 const schema=fs.readFileSync('supabase/schema.sql','utf8');
 
-test('all six admin add actions are wired in the authenticated app shell',()=>{
-  for (const id of ['utility','grocery','paylater','other','payment','announcement']) {
+test('all seven admin add actions are wired in the authenticated app shell',()=>{
+  for (const id of ['utility','rent','grocery','paylater','other','payment','announcement']) {
     assert.match(app,new RegExp(`adminAdd===['"]${id}['"]`));
   }
 });
