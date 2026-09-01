@@ -860,6 +860,67 @@ $$;
 
 grant execute on function public.household_member_directory_v3(boolean) to authenticated;
 
+create or replace function public.open_obligations_v3(
+  p_debtor uuid default null,
+  p_creditor uuid default null
+)
+returns table(
+  id uuid,
+  due_date date,
+  source_category text,
+  outstanding_cents bigint
+)
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  v_current uuid := public.current_member_id_v3();
+  v_debtor uuid := coalesce(p_debtor, v_current);
+  v_household uuid;
+  v_active_month date;
+begin
+  if v_current is null then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+
+  select hm.household_id into v_household
+  from public.household_members hm
+  where hm.id = v_debtor
+    and hm.is_active = true;
+
+  if v_household is null then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+
+  if v_debtor <> v_current and not public.is_household_admin_v3(v_household) then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+
+  select bp.month into v_active_month
+  from public.billing_periods bp
+  where bp.household_id = v_household
+    and bp.status = 'active'
+  limit 1;
+
+  return query select
+    ob.id,
+    ob.due_date,
+    ob.source_category,
+    ob.outstanding_cents
+  from public.obligation_balances_v3 ob
+  join public.billing_periods bp on bp.id = ob.period_id
+  where ob.debtor_member_id = v_debtor
+    and (p_creditor is null or ob.creditor_member_id = p_creditor)
+    and ob.outstanding_cents > 0
+    and bp.month <= v_active_month
+  order by ob.due_date nulls last, ob.id;
+end;
+$$;
+
+grant execute on function public.open_obligations_v3(uuid,uuid) to authenticated;
+
 create or replace function public.submit_payment_claim_v3(
   p_payee uuid,
   p_amount_cents bigint,

@@ -4,6 +4,16 @@ import fs from 'node:fs';
 
 const read=path=>fs.readFileSync(path,'utf8');
 
+const latestFunctionBlock=(sql,name)=>{
+  const re=new RegExp(`create or replace function public\\.${name}\\b`,'gi');
+  let match,start=-1;
+  while((match=re.exec(sql))) start=match.index;
+  assert.notEqual(start,-1, `${name} should be defined`);
+  const end=sql.indexOf('$$;',start);
+  assert.notEqual(end,-1, `${name} should use a dollar-quoted body`);
+  return sql.slice(start,end+3);
+};
+
 test('all financial sheets use the shared observable save flow',()=>{
   const files=[
     'js/member-payments.js',
@@ -43,4 +53,16 @@ test('utility save callback uses the provided onDone callback',()=>{
   const src=read('js/admin-utilities-v3.js');
   assert.match(src,/onSaved:async id=>\{queuePushForTarget\(\{targetType:'expense',targetId:id\}\);await onDone\(id\);\}/);
   assert.doesNotMatch(src,/\bonSaved\}\);/);
+});
+
+test('open obligations lookup qualifies id output-column references used before payment saves',()=>{
+  for(const file of ['supabase/migrate-v3.3.3.sql','supabase/schema.sql']){
+    const fn=latestFunctionBlock(read(file),'open_obligations_v3');
+    assert.match(fn,/returns table\(\s*id uuid,/i);
+    assert.match(fn,/from public\.household_members hm\s+where hm\.id\s*=\s*v_debtor/is);
+    assert.match(fn,/select bp\.month into v_active_month\s+from public\.billing_periods bp/is);
+    assert.match(fn,/return query select\s+ob\.id,\s*ob\.due_date,\s*ob\.source_category,\s*ob\.outstanding_cents/is);
+    assert.doesNotMatch(fn,/(?:where|and)\s+id\s*=/i);
+    assert.doesNotMatch(fn,/select household_id into v_household\s+from public\.household_members\s+where id/i);
+  }
 });
