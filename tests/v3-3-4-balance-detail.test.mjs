@@ -38,9 +38,9 @@ test('balance detail groups creditors with avatar paths and category breakdown',
 
 test('balance detail classifies due status by overdue five day later and no due date',()=>{
   const fn=latestFunctionBlock(read('supabase/migrate-v3.3.4.sql'),'member_balance_detail_v3');
-  assert.match(fn,/when .*due_date is null then 'no_due_date'/is);
-  assert.match(fn,/when .*due_date < p_today then 'overdue'/is);
-  assert.match(fn,/when .*due_date <= p_today \+ 5 then 'due_soon'/is);
+  assert.match(fn,/when coalesce\(e\.due_date,\s*ob\.due_date\) is null then 'no_due_date'/is);
+  assert.match(fn,/when coalesce\(e\.due_date,\s*ob\.due_date\) < p_today then 'overdue'/is);
+  assert.match(fn,/when coalesce\(e\.due_date,\s*ob\.due_date\) <= p_today \+ 5 then 'due_soon'/is);
   assert.match(fn,/else 'later'/is);
   assert.match(fn,/'overdue'/i);
   assert.match(fn,/'due_soon'/i);
@@ -55,4 +55,12 @@ test('credit breakdown includes creditor identity and source payment metadata',(
   }
   assert.match(fn,/from public\.credits c/i);
   assert.match(fn,/left join public\.payments pay/i);
+});
+
+test('balance detail prefers linked expense category and due date for expense backed obligations',()=>{
+  for(const file of ['supabase/migrate-v3.3.4.sql','supabase/schema.sql']){
+    const fn=latestFunctionBlock(read(file),'member_balance_detail_v3');
+    assert.match(fn,/coalesce\(e\.due_date,\s*ob\.due_date\)\s+as due_date/i);
+    assert.match(fn,/coalesce\(e\.category,\s*ob\.source_category,\s*'Expense'\)\s+as source_category/i);
+  }
 });

@@ -1250,10 +1250,10 @@ begin
         ob.debtor_member_id,
         ob.creditor_member_id,
         ob.creditor_label,
-        ob.due_date,
-        ob.source_category,
+        coalesce(e.due_date, ob.due_date) as due_date,
+        coalesce(e.category, ob.source_category, 'Expense') as source_category,
         ob.outstanding_cents,
-        coalesce(e.description, ob.source_category, 'Expense') as label,
+        coalesce(e.description, e.category, ob.source_category, 'Expense') as label,
         coalesce(
           e.source_type,
           case when o.source_paylater_installment_id is not null then 'paylater' else 'expense' end
@@ -1261,9 +1261,9 @@ begin
         coalesce(cp.display_name, ob.creditor_label, 'Household member') as display_name,
         cp.avatar_path,
         case
-          when ob.due_date is null then 'no_due_date'
-          when ob.due_date < p_today then 'overdue'
-          when ob.due_date <= p_today + 5 then 'due_soon'
+          when coalesce(e.due_date, ob.due_date) is null then 'no_due_date'
+          when coalesce(e.due_date, ob.due_date) < p_today then 'overdue'
+          when coalesce(e.due_date, ob.due_date) <= p_today + 5 then 'due_soon'
           else 'later'
         end as due_status
       from public.obligation_balances_v3 ob

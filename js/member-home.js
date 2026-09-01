@@ -9,16 +9,19 @@ import {householdMemberDirectory} from './member-directory.js';
 export async function loadMemberHome(){
   if(!navigator.onLine){const cached=loadOfflineSummary();if(!cached)throw new Error('Reconnect to view your balance.');return {offline:true,vm:{memberId:cached.memberId,name:cached.displayName,balance:cached.lastKnownBalance,dueSoon:cached.dueSoonTotal,creditors:[],household:{total:0,categories:[]},personalCategories:[],recent:[]},lastSyncedAt:cached.lastSyncedAt};}
   const raw=await supabase.rpc('member_home_v3');const base=normalizeMemberHome(Array.isArray(raw)?raw[0]:raw);saveOfflineSummary(base);
-  const [splits,claims,payments,householdMembers]=await Promise.all([
+  const [splits,claims,payments,householdMembers,balanceDetail0]=await Promise.all([
     supabase.select('expense_splits',`select=amount_cents,expenses(category,period_id,status)&member_id=eq.${base.memberId}`),
     supabase.select('payment_claims','select=id,amount_cents,paid_at,method,status,created_at&order=created_at.desc&limit=5'),
     supabase.select('payments','select=id,amount_cents,paid_at,method,status,created_at&order=paid_at.desc&limit=5'),
-    householdMemberDirectory()
+    householdMemberDirectory(),
+    supabase.rpc('member_balance_detail_v3',{}).catch(()=>null)
   ]);
-  const vm=buildMemberDashboard({home:{vm:base},splits,claims,payments});
+  const balanceDetail=Array.isArray(balanceDetail0)?balanceDetail0[0]:balanceDetail0;
+  let vm=applyBalanceDetailToMemberHome(buildMemberDashboard({home:{vm:base},splits,claims,payments}),balanceDetail);
   const avatarPathByMemberId=new Map((householdMembers||[]).map(member=>[member.id,member.avatarPath||member.avatar_path||'']));
   vm.creditors=await Promise.all((vm.creditors||[]).map(async creditor=>{
-    const path=avatarPathByMemberId.get(creditor.memberId||creditor.member_id)||'';
+    if(creditor.avatarUrl)return creditor;
+    const path=creditor.avatarPath||avatarPathByMemberId.get(creditor.memberId||creditor.member_id)||'';
     if(!path)return creditor;
     const avatarUrl=await signedHouseholdMediaUrl(path).catch(()=> '');
     return avatarUrl?{...creditor,avatarUrl}:creditor;
@@ -29,6 +32,9 @@ export async function loadMemberHome(){
 function categoryIcon(label=''){return label.includes('Housing')?'utilities':label.includes('Grocer')?'grocery':label.includes('PayLater')?'paylater':'wallet';}
 function householdMix(categories=[],total=0){let cursor=0;const colors=['#0f6b57','#f39a3d','#294c7a','#b7a164'];const stops=[];categories.slice(0,4).forEach((c,i)=>{const pct=total?c.amount/total*100:0;stops.push(`${colors[i]} ${cursor}% ${cursor+pct}%`);cursor+=pct;});if(cursor<100)stops.push(`#e8eeeb ${cursor}% 100%`);return `conic-gradient(${stops.join(',')})`;}
 function activityMeta(row){const method=String(row?.method||'').trim();const date=new Date(row.date).toLocaleDateString('en-PH',{month:'short',day:'numeric'});return method&&method.toLowerCase()!=='payment'?`${escapeHtml(method)} · ${date}`:date;}
+const detailCents=item=>Number(item?.amount_cents??item?.outstanding_cents??item?.amount??0);
+function detailDueSoonCents(detail={}){const groups=detail.due_groups||detail.dueGroups;if(!groups)return null;const items=Array.isArray(groups)?(groups.find(group=>group.key==='due_soon')?.items||[]):(groups.due_soon||[]);return items.reduce((sum,item)=>sum+detailCents(item),0);}
+export function applyBalanceDetailToMemberHome(vm={},detail=null){if(!detail||!Array.isArray(detail.creditors))return vm;const dueSoon=detailDueSoonCents(detail);return {...vm,balance:Number(detail.outstanding_cents??vm.balance??0),credit:Number(detail.credit_cents??vm.credit??0),owedToMe:Number(detail.owed_to_me_cents??vm.owedToMe??0),dueSoon:dueSoon===null?Number(vm.dueSoon||0):dueSoon,creditors:detail.creditors.map(x=>({memberId:x.member_id||x.memberId||null,name:x.display_name||x.name||x.label||'Household member',amount:detailCents(x),avatarUrl:x.avatar_url||x.avatarUrl||'',avatarPath:x.avatar_path||x.avatarPath||'',breakdown:x.breakdown||[]})).filter(x=>x.amount>0)};}
 
 export function renderMemberHome({vm,offline=false,lastSyncedAt}={}){
   const creditors=vm.creditors?.length?vm.creditors.map(x=>`<button class="payee-card" type="button" data-payment-profile="${x.memberId||x.member_id||''}"><div class="payee-avatar ${x.avatarUrl?'has-photo':''}">${x.avatarUrl?`<img src="${escapeHtml(x.avatarUrl)}" alt="${escapeHtml(x.name)} profile photo">`:escapeHtml(x.name.slice(0,1).toUpperCase())}</div><div><strong>${escapeHtml(x.name)}</strong><small>Outstanding</small></div><b>${formatPeso(x.amount)}</b><span>›</span></button>`).join(''):`<div class="empty-state-bank compact"><strong>You're settled</strong><span>No outstanding transfers right now.</span></div>`;

@@ -8,6 +8,10 @@ import {
   renderMemberBalance,
   summarizeCategories
 } from '../js/member-balance.js';
+import {
+  applyBalanceDetailToMemberHome,
+  renderMemberHome
+} from '../js/member-home.js';
 
 const read = path => fs.readFileSync(path, 'utf8');
 
@@ -119,6 +123,43 @@ test('balance renderer understands object-shaped member balance detail RPC group
   assert.doesNotMatch(html, /No due within 5 days/);
 });
 
+test('member home payees use the same balance detail source as the payment sheet', () => {
+  const vm = applyBalanceDetailToMemberHome({
+    memberId:'kd',
+    name:'KD',
+    balance:16200,
+    dueSoon:0,
+    credit:0,
+    creditors:[{memberId:'aerian', name:'Aerian', amount:16200}],
+    household:{total:0,categories:[]},
+    personalCategories:[],
+    recent:[]
+  }, {
+    outstanding_cents:14822,
+    credit_cents:0,
+    owed_to_me_cents:0,
+    creditors:[
+      {member_id:'aerian', display_name:'Aerian', amount_cents:14822, avatar_url:'aerian.jpg'}
+    ],
+    due_groups:{
+      overdue:[],
+      due_soon:[{source_category:'Groceries', display_name:'Aerian', outstanding_cents:14822, due_date:'2026-09-05'}],
+      later:[],
+      no_due_date:[]
+    }
+  });
+
+  assert.equal(vm.name, 'KD');
+  assert.equal(vm.balance, 14822);
+  assert.equal(vm.dueSoon, 14822);
+  assert.deepEqual(vm.creditors.map(x=>[x.memberId,x.name,x.amount,x.avatarUrl]), [['aerian','Aerian',14822,'aerian.jpg']]);
+
+  const html = renderMemberHome({vm});
+  assert.match(html, /Aerian/);
+  assert.match(html, /148\.22/);
+  assert.doesNotMatch(html, /162\.00/);
+});
+
 test('payment profile sheet source includes obligation breakdown next to the QR', () => {
   const source = read('js/people-settings.js');
   assert.match(source, /balanceDetail/);
@@ -136,4 +177,9 @@ test('premium balance icons and mobile grid guardrails are present', () => {
   assert.match(css, /grid-template-columns:44px minmax\(0,1fr\) auto/);
   assert.match(css, /\.payee-amount-block/);
   assert.match(css, /@media\(max-width:560px\)[\s\S]*\.balance-payee-v2\{grid-template-columns:44px minmax\(0,1fr\)/);
+});
+
+test('announcement ticker uses a calmer readable speed', () => {
+  const css = read('css/styles.css');
+  assert.match(css, /animation:dormflowTicker 72s linear infinite/);
 });
