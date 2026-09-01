@@ -14,7 +14,7 @@ import {loadPayLater,renderPayLater,openPayLaterSheet} from './paylater-v3.js';
 import {renderProfile,openProfileSheet,openPaymentMethodSheet,renderHouseholdPaymentProfiles,openPaymentProfileSheet,renderSecurity,renderNotificationPreferences,saveNotificationPreferenceForm,promptAndSetPin,clearAppLock,enablePush,disablePush} from './people-settings.js';
 import {loadNotifications,renderNotifications,markRead,notificationRoute,requestPushForTarget} from './notifications.js';
 import {setActiveMonth,formatBillingMonth} from './months.js';
-import {pushCapabilityStatus} from './push.js';
+import {pushCapabilityStatus,sendPushTest} from './push.js';
 import {openGenericExpenseSheet,openAdminPaymentSheet,openExpenseEditSheet,duplicateExpense,renderManagePeople,renderMonthlySetup,renderReports,loadAdminPayments,renderAdminPayments,openAdminPaymentEditSheet} from './admin-generic-v3.js';
 import {loadHouseholdExpenses,renderHouseholdExpenses,loadUtilities,renderUtilities} from './household-views-v3.js';
 import {openExpenseAttachmentSheet} from './attachments.js';
@@ -52,7 +52,7 @@ async function refreshNotificationBadge(){
   try{const rows=await loadNotifications(),count=rows.filter(n=>!n.read_at).length,label=count>99?'99+':String(count);button.innerHTML=`${icon('notifications')}${count?`<span class="notification-badge">${label}</span>`:''}`;}catch{button.innerHTML=icon('notifications');}
 }
 async function injectPushEnablePrompt(root){
-  if(!root||!state.session)return;try{const status=await pushCapabilityStatus();if(!status.supported||status.subscribed||status.permission!=='default'||root.querySelector('.push-enable-card'))return;root.insertAdjacentHTML('afterbegin',`<section class="push-enable-card"><span class="quick-icon">${icon('notifications')}</span><div><strong>Stay updated</strong><small>Enable DormFlow push for payments, bills, due dates, and household updates.</small></div><button class="secondary-action" type="button" data-action="enable-push">Enable notifications</button></section>`);}catch{}
+  if(!root||!state.session)return;try{const status=await pushCapabilityStatus(state.identity);if(!status.supported||status.active||status.permission==='denied'||root.querySelector('.push-enable-card'))return;root.insertAdjacentHTML('afterbegin',`<section class="push-enable-card"><span class="quick-icon">${icon('notifications')}</span><div><strong>Stay updated</strong><small>Enable DormFlow push for payments, bills, due dates, and household updates.</small></div><button class="secondary-action" type="button" data-action="enable-push">Enable notifications</button></section>`);}catch{}
 }
 async function ensureUnlocked(appState=state){
   if(!appState.identity)return true;
@@ -76,7 +76,7 @@ async function renderAdminManage(appState,root){
   if(route==='manage-setup'){root.innerHTML=await renderMonthlySetup(appState.identity);return;}
   if(route==='manage-reports'){root.innerHTML=await renderReports();return;}
   if(route==='manage-expenses'||route==='manage-groceries'||route==='manage-other'){
-    const overview=await loadAdminOverview();let rows=await loadAdminExpenses(overview.period_id);
+    const overview=await loadAdminOverview();let rows=await loadAdminExpenses(overview.periodId);
     if(route==='manage-groceries')rows=rows.filter(x=>String(x.category).toLowerCase().includes('grocer'));
     if(route==='manage-other')rows=rows.filter(x=>String(x.category).toLowerCase().includes('other'));
     const title=route==='manage-groceries'?'Groceries':route==='manage-other'?'Other expenses':'All expenses';
@@ -84,7 +84,7 @@ async function renderAdminManage(appState,root){
   }
   const overview=await loadAdminOverview();
   const manageCard=(id,label,detail,iconName)=>`<button class="service-menu-card manage-service-card" data-manage="${id}" type="button"><span class="service-menu-icon">${icon(iconName)}</span><div><strong>${label}</strong><small>${detail}</small></div><b>›</b></button>`;
-  root.innerHTML=`<section class="screen banking-dashboard manage-screen"><div class="bank-page-head"><div><span class="screen-kicker">Administration</span><h1>Manage</h1></div><span class="member-status-pill">20 St. Paul</span></div><article class="bank-panel"><div class="panel-head"><div><span>Money</span><h2>Household finances</h2></div></div><div class="manage-service-grid">${manageCard('utilities','Utilities','Electricity, water and WiFi','utilities')}${manageCard('payments','Payments','Recorded transfers and corrections','payments')}${manageCard('groceries','Groceries','Shared food and household items','grocery')}${manageCard('paylater','PayLater','Installments and schedules','paylater')}${manageCard('other','Other expenses','Miscellaneous shared costs','wallet')}</div></article><article class="bank-panel"><div class="panel-head"><div><span>Household</span><h2>Operations</h2></div></div><div class="manage-service-grid">${manageCard('announcements','Announcements','Post notices to roommates','announcement')}${manageCard('people','People & splits','Members and default shares','users')}${manageCard('setup','Monthly setup','Start and carry forward periods','calendar')}${manageCard('reports','Reports','Review billing periods','analytics')}<button class="service-menu-card manage-service-card" data-route="profile" type="button"><span class="service-menu-icon">${icon('settings')}</span><div><strong>Settings</strong><small>Account and security preferences</small></div><b>›</b></button></div></article><article class="bank-panel manage-expense-card"><div class="panel-head"><div><span>Current period</span><h2>Latest expenses</h2></div><button class="panel-link" data-manage="expenses">View all</button></div>${renderExpenseRows((await loadAdminExpenses(overview.period_id)).slice(0,6))}</article></section>`;
+  root.innerHTML=`<section class="screen banking-dashboard manage-screen"><div class="bank-page-head"><div><span class="screen-kicker">Administration</span><h1>Manage</h1></div><span class="member-status-pill">20 St. Paul</span></div><article class="bank-panel"><div class="panel-head"><div><span>Money</span><h2>Household finances</h2></div></div><div class="manage-service-grid">${manageCard('utilities','Utilities','Electricity, water and WiFi','utilities')}${manageCard('payments','Payments','Recorded transfers and corrections','payments')}${manageCard('groceries','Groceries','Shared food and household items','grocery')}${manageCard('paylater','PayLater','Installments and schedules','paylater')}${manageCard('other','Other expenses','Miscellaneous shared costs','wallet')}</div></article><article class="bank-panel"><div class="panel-head"><div><span>Household</span><h2>Operations</h2></div></div><div class="manage-service-grid">${manageCard('announcements','Announcements','Post notices to roommates','announcement')}${manageCard('people','People & splits','Members and default shares','users')}${manageCard('setup','Monthly setup','Start and carry forward periods','calendar')}${manageCard('reports','Reports','Review billing periods','analytics')}<button class="service-menu-card manage-service-card" data-route="profile" type="button"><span class="service-menu-icon">${icon('settings')}</span><div><strong>Settings</strong><small>Account and security preferences</small></div><b>›</b></button></div></article><article class="bank-panel manage-expense-card"><div class="panel-head"><div><span>Current period</span><h2>Latest expenses</h2></div><button class="panel-link" data-manage="expenses">View all</button></div>${renderExpenseRows((await loadAdminExpenses(overview.periodId)).slice(0,6))}</article></section>`;
 }
 
 export async function renderApp(appState=state) {
@@ -134,9 +134,9 @@ async function handleAdminAdd(adminAdd){
   if(!adminAdd)return;
   const sheet=document.querySelector('#sheet');if(sheet.open)sheet.close();
   const overview=await loadAdminOverview();const done=()=>{state.route='overview';renderApp();};
-  if(adminAdd==='utility') return openUtilitySheet({identity:state.identity,periodId:overview.period_id,onDone:done});
-  if(adminAdd==='grocery') return openGenericExpenseSheet({identity:state.identity,periodId:overview.period_id,kind:'grocery',onDone:done});
-  if(adminAdd==='other') return openGenericExpenseSheet({identity:state.identity,periodId:overview.period_id,kind:'other',onDone:done});
+  if(adminAdd==='utility') return openUtilitySheet({identity:state.identity,periodId:overview.periodId,onDone:done});
+  if(adminAdd==='grocery') return openGenericExpenseSheet({identity:state.identity,periodId:overview.periodId,kind:'grocery',onDone:done});
+  if(adminAdd==='other') return openGenericExpenseSheet({identity:state.identity,periodId:overview.periodId,kind:'other',onDone:done});
   if(adminAdd==='payment') return openAdminPaymentSheet({identity:state.identity,onDone:done});
   if(adminAdd==='announcement') return openAnnouncementSheet({identity:state.identity,onDone:()=>{state.route='manage-announcements';renderApp();}});
   if(adminAdd==='paylater') return openPayLaterSheet({identity:state.identity,onDone:()=>{state.route='manage-paylater';renderApp();}});
@@ -183,6 +183,7 @@ function bindShell(){
       if(action==='set-app-pin'){if(await promptAndSetPin(state.identity)){state.unlocked=true;showToast('App PIN saved');}return;}
       if(action==='clear-app-lock'){clearAppLock(state.identity);state.unlocked=true;showToast('App lock turned off');return;}
       if(action==='enable-push'){await enablePush(state.identity);showToast('Push notifications enabled');await refreshNotificationBadge();return renderApp();}
+      if(action==='test-push'){showToast('Test scheduled · go to your Home Screen now');const result=await sendPushTest();showToast(result.delivered?'Background push delivered':'Push test did not reach a device');return;}
       if(action==='disable-push'){await disablePush(state.identity);showToast('Push notifications disabled');return;}
       if(action==='open-add' && state.identity?.role==='admin'){const sheet=document.querySelector('#sheet');document.querySelector('#sheet-content').innerHTML=renderAddSheet();sheet.showModal();document.querySelector('[data-close-sheet]').onclick=()=>sheet.close();}
     }catch(err){showToast(err.message||String(err));}

@@ -11,8 +11,8 @@ const required=[
   'js/read-model-v3.js','js/member-home.js','js/member-balance.js','js/member-payments.js','js/member-more.js','js/payment-form.js','js/attachments.js','js/banking-carousel.js','js/household-media.js',
   'js/admin-overview-v3.js','js/admin-actions.js','js/admin-expenses-v3.js','js/admin-utilities-v3.js','js/admin-generic-v3.js','js/admin-review.js',
   'js/household-views-v3.js','js/announcements-v3.js','js/paylater-v3.js','js/people-settings.js','js/notifications.js','js/push.js','js/months.js',
-  'api/health.js','api/push-subscribe.js','api/push-deliver.js','api/push-event.js','api/reminders.js','lib/server-supabase.js','lib/push-server.js',
-  'supabase/schema.sql','supabase/seed-members.sql','supabase/migrate-history.sql','supabase/migrate-v3.2.sql','supabase/migrate-v3.3.sql','supabase/migrate-v3.3.1.sql','supabase/README.md',
+  'api/health.js','api/push-subscribe.js','api/push-deliver.js','api/push-event.js','api/push-test.js','api/reminders.js','lib/server-supabase.js','lib/push-server.js',
+  'supabase/schema.sql','supabase/seed-members.sql','supabase/migrate-history.sql','supabase/migrate-v3.2.sql','supabase/migrate-v3.3.sql','supabase/migrate-v3.3.1.sql','supabase/migrate-v3.3.2.sql','supabase/README.md',
   'scripts/verify-v3-history.mjs','vercel.json','package.json','README.md','docs/DEPLOYMENT.md','docs/MIGRATION.md','.env.example','RELEASE-CHECKLIST.md'
 ];
 const forbidden=[
@@ -29,7 +29,7 @@ const jsFiles=all.filter(f=>f.endsWith('.js')||f.endsWith('.mjs'));
 for(const file of jsFiles){const r=spawnSync(process.execPath,['--check',file],{encoding:'utf8'});if(r.status!==0)throw new Error(`Syntax check failed for ${path.relative(root,file)}:\n${r.stderr}`);}
 
 const pkg=JSON.parse(await readFile(path.join(root,'package.json'),'utf8'));
-if(pkg.version!=='3.3.1')throw new Error('package.json must be v3.3.1');
+if(pkg.version!=='3.3.2')throw new Error('package.json must be v3.3.2');
 if(pkg.dependencies?.['web-push']!=='^3.6.7')throw new Error('web-push dependency missing from v3 package');
 if(pkg.scripts?.test!=='node --test tests/v3-*.test.mjs')throw new Error('npm test must run only the v3 contract suite');
 
@@ -54,10 +54,12 @@ const v33=await readFile(path.join(root,'supabase/migrate-v3.3.sql'),'utf8');
 for(const marker of ['set_active_month_v3','billing_periods_one_active_per_household','month_balance_updates','push_attempted_at'])if(!v33.includes(marker))throw new Error(`Missing v3.3 migration marker: ${marker}`);
 const v331=await readFile(path.join(root,'supabase/migrate-v3.3.1.sql'),'utf8');
 for(const marker of ['source_paylater_installment_id','edit_paylater_v3','archive_paylater_v3','paylater_added'])if(!v331.includes(marker))throw new Error(`Missing v3.3.1 migration marker: ${marker}`);
+const v332=await readFile(path.join(root,'supabase/migrate-v3.3.2.sql'),'utf8');
+for(const marker of ['2026-09-05','59200','466000','bp.month <= v_active_month','created_by is null'])if(!v332.includes(marker))throw new Error(`Missing v3.3.2 migration marker: ${marker}`);
 const vercel=JSON.parse(await readFile(path.join(root,'vercel.json'),'utf8'));
 if(!vercel.crons?.some(c=>c.path==='/api/reminders'&&c.schedule==='0 0 * * *'))throw new Error('Daily reminders must run at 00:00 UTC / 08:00 PHT.');
 const sw=await readFile(path.join(root,'service-worker.js'),'utf8');
-if(!/dormflow-v3-3-1/i.test(sw))throw new Error('Service worker cache must be versioned for v3.3.1.');
+if(!/dormflow-v3-3-2/i.test(sw))throw new Error('Service worker cache must be versioned for v3.3.2.');
 
 const migration=await readFile(path.join(root,'supabase/migrate-history.sql'),'utf8');
 for(const value of ['2394422','2206229','188193'])if(!migration.includes(value))throw new Error(`Missing August migration verification target: ${value}`);
@@ -76,4 +78,4 @@ for(const file of all.filter(f=>textExt.has(path.extname(f))||path.basename(f)==
   if(/-----BEGIN (?:PRIVATE KEY|RSA PRIVATE KEY)-----/.test(text))throw new Error(`Private key committed in ${path.relative(root,file)}.`);
 }
 
-console.log(`DormFlow v3.3.1 project check passed: ${required.length} required files; ${jsFiles.length} JavaScript files syntax-valid; fresh schema/RLS/PWA/deployment markers present; no forbidden v2/private artifacts or committed secret-like credentials found.`);
+console.log(`DormFlow v3.3.2 project check passed: ${required.length} required files; ${jsFiles.length} JavaScript files syntax-valid; fresh schema/RLS/PWA/deployment markers present; no forbidden v2/private artifacts or committed secret-like credentials found.`);

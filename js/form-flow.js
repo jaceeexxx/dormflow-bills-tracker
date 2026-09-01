@@ -2,6 +2,8 @@ function submitButton(form){return form.querySelector('button[type="submit"],inp
 export function snapshotForm(form){const data=new FormData(form);return JSON.stringify([...data.entries()].map(([k,v])=>[k,v instanceof File?`${v.name}:${v.size}:${v.lastModified}`:String(v)]));}
 function notifyDefault(message,type='success'){if(typeof window!=='undefined')window.dispatchEvent(new CustomEvent('dormflow:toast',{detail:{message,type}}));}
 
+export function requireActivePeriod(periodId){if(!periodId)throw new Error('No active billing month is available. Open Monthly setup and make a month current first.');return periodId;}
+
 export function bindDirtyClose({form,closeButtons=[],close=()=>{},confirmDiscard=()=>globalThis.confirm?.('Discard changes?')??true,isDirty}={}){
   const initial=snapshotForm(form);
   const dirty=()=>typeof isDirty==='function'?!!isDirty():snapshotForm(form)!==initial;

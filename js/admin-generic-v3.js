@@ -6,10 +6,11 @@ import {saveExpenseEdit} from './admin-expenses-v3.js';
 import {icon} from './icons.js';
 import {formatBillingMonth,nextBillingMonth} from './months.js';
 import {requestPushForTarget} from './notifications.js';
-import {bindSaveFlow,bindDirtyClose} from './form-flow.js';
+import {bindSaveFlow,bindDirtyClose,requireActivePeriod} from './form-flow.js';
 
 export async function activeHouseholdMembers(){const rows=await supabase.select('household_members','select=id,role,is_active,profiles(display_name)&is_active=eq.true');return rows.map(r=>({id:r.id,name:r.profiles?.display_name||'Member',role:r.role}));}
 export async function openGenericExpenseSheet({identity,periodId,kind='grocery',onDone=()=>{}}){
+  requireActivePeriod(periodId);
   const members=await activeHouseholdMembers(),adminId=identity.memberId||identity.member_id;const sheet=document.querySelector('#sheet'),content=document.querySelector('#sheet-content');
   const category=kind==='grocery'?'Groceries':'Other Expenses',title=kind==='grocery'?'Grocery':'Other expense';
   content.innerHTML=`<form class="sheet-body" id="generic-expense-form"><div class="sheet-grabber"></div><div class="sheet-head"><h2>${title}</h2><button type="button" class="icon-plain" data-close-sheet>×</button></div><label class="field"><span>Description</span><input name="description" required placeholder="${kind==='grocery'?'Puregold groceries':'Expense description'}"></label><label class="field amount-field"><span>Amount</span><input name="amount" inputmode="decimal" required placeholder="0.00"></label><label class="field"><span>Paid by</span><select name="payer">${members.map(m=>`<option value="${m.id}" ${m.id===adminId?'selected':''}>${escapeHtml(m.name)}</option>`).join('')}</select></label><label class="field"><span>Date</span><input name="expenseDate" type="date" value="${new Date().toISOString().slice(0,10)}" required></label><label class="field"><span>Due date <small>optional</small></span><input name="dueDate" type="date"></label><fieldset class="split-field"><legend>Split with</legend>${members.map(m=>`<label><input type="checkbox" name="member" value="${m.id}" checked><span>${escapeHtml(m.name)}</span></label>`).join('')}<small>Preset · All checked equally</small></fieldset><button class="primary-action" type="submit">Save expense</button></form>`;

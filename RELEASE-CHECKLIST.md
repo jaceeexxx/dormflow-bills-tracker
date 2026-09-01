@@ -1,23 +1,22 @@
-# DormFlow v3.3.1 Release Checklist
+# DormFlow v3.3.2 Release Checklist
 
 - [ ] `npm test` passes with zero failures.
-- [ ] `npm run check` passes.
-- [ ] `package.json` is v3.3.1 and declares `web-push`.
-- [ ] Existing v3.3 projects run `supabase/migrate-v3.3.1.sql` once and **do not rerun** schema/seed/history/v3.2/v3.3 migrations.
-- [ ] Fresh projects use `schema.sql` → four Auth accounts → `seed-members.sql` → `migrate-history.sql`; additive upgrade migrations are not rerun afterward.
-- [ ] August verification remains ₱23,944.22 total / ₱22,062.29 settled / ₱1,881.93 outstanding.
-- [ ] Exactly one billing month is Active and previous unpaid obligations remain attached to their original periods.
-- [ ] Back navigation, touch swipe/snap cards, mobile logo/header avatar, responsive Settings/Who Pays Whom/Notifications rows work on narrow phones.
-- [ ] Profile choose → crop → Use Photo → Save closes automatically and avatar refreshes in header/member relationships.
-- [ ] Admin Utilities/Expenses/Payments/PayLater support the approved Add/Edit/Archive/Void behavior and preserve history.
-- [ ] Admin writes cause focused Supabase Realtime refetches on affected open member screens.
-- [ ] PayLater Equal/Custom schedules reconcile to the principal; each installment has four economic shares, borrower self-share settled, only three reimbursement obligations.
-- [ ] Six-digit PIN keypad auto-submits, handles incorrect PIN, and offers Use password instead.
-- [ ] DormFlow Inbox remains authoritative; five push categories default ON.
-- [ ] Foreground push appears as in-app banner; background/closed installed PWA receives system push; tap routes to relevant screen.
-- [ ] Expired push subscriptions (404/410) are marked inactive.
-- [ ] Reminder stages remain 3 days before / 1 day before / due today / daily overdue with cron `0 0 * * *` (8:00 AM PHT).
-- [ ] Service worker cache is v3.3.1 and release-critical HTML/CSS/JS are network-first.
-- [ ] `js/config.js` contains only browser-safe values; no secret/service-role credential, VAPID private key, or CRON secret is packaged.
-- [ ] ZIP integrity succeeds and forbidden legacy/private paths are absent.
-- [ ] On a real iPhone, install/open DormFlow as a Home Screen PWA and verify a background push notification reaches the Lock Screen/Notification Center, while a foreground event uses the in-app banner.
+- [ ] `npm run check` passes and package version is v3.3.2.
+- [ ] Existing v3.3.1 project runs **only** `supabase/migrate-v3.3.2.sql` once.
+- [ ] Do not rerun earlier schema/seed/history or v3.2/v3.3/v3.3.1 migrations on the existing database.
+- [ ] August verification remains ₱23,944.22 / ₱22,062.29 / ₱1,881.93.
+- [ ] September current balance excludes October/November draft PayLater installments while prior unpaid balances still carry forward.
+- [ ] Legacy September PayLater matches Sep 5 Aerian ₱592, Sep 5 Jace ₱4,660, Sep 15 Aexy ₱280, Sep 15 Kean ₱428, Sep 16 Jace TikTok ₱360.
+- [ ] Borrower has no self-obligation; only the other three roommate shares are reimbursement obligations.
+- [ ] Admin Add/Save works for Utility, Grocery, Other Expense, Announcement, and PayLater; successful Save closes and failed Save preserves inputs.
+- [ ] Admin Manage screens use normalized `periodId` everywhere.
+- [ ] Selected file/crop state is visible before Save.
+- [ ] Admin Settlement shows Needs to pay / Owed to member / Net position.
+- [ ] Upcoming uses current-month schedule rows and shows Sep 5 PayLater.
+- [ ] Back touch target, PayLater Schedule cards, mobile logo, Notifications, Upcoming, and Settlement do not overlap on iPhone widths.
+- [ ] Push diagnostics require browser + server + current VAPID before showing Active.
+- [ ] Installed iPhone PWA: tap **Send 5-second test**, background app, and receive a real system push notification.
+- [ ] Expired 404/410 subscriptions are marked inactive.
+- [ ] Service-worker cache is v3.3.2 and release-critical CSS/JS remain network-first.
+- [ ] No secret/service-role JWT, `sb_secret_`, VAPID private key, or `CRON_SECRET` value is committed.
+- [ ] Full ZIP and focused v3.3.1 → v3.3.2 upgrade ZIP pass integrity and overlay verification.

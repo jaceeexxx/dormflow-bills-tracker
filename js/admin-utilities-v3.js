@@ -2,9 +2,10 @@ import {supabase} from './auth.js';
 import {buildUtilityPayload,parseMoneyCents} from './admin-actions.js';
 import {escapeHtml} from './read-model-v3.js';
 import {requestPushForTarget} from './notifications.js';
-import {bindSaveFlow,bindDirtyClose} from './form-flow.js';
+import {bindSaveFlow,bindDirtyClose,requireActivePeriod} from './form-flow.js';
 async function activeMembers(){const rows=await supabase.select('household_members','select=id,role,is_active,profiles(display_name)&is_active=eq.true');return rows.map(r=>({id:r.id,name:r.profiles?.display_name||'Member',role:r.role}));}
 export async function openUtilitySheet({identity,periodId,onDone=()=>{}}){
+ requireActivePeriod(periodId);
  const members=await activeMembers();const sheet=document.querySelector('#sheet'),content=document.querySelector('#sheet-content');
  content.innerHTML=`<form id="utility-form" class="sheet-body"><div class="sheet-grabber"></div><div class="sheet-head"><h2>Utility bill</h2><button type="button" class="icon-plain" data-close-sheet>×</button></div><label class="field"><span>Type</span><select name="utilityType"><option value="electricity">Electricity / Meralco</option><option value="water">Water</option><option value="wifi">PLDT WiFi</option></select></label><label class="field amount-field"><span>Amount</span><input name="amount" inputmode="decimal" placeholder="0.00" required></label><div class="field"><span>Paid by</span><div class="read-only-field">${escapeHtml(identity.displayName||identity.display_name||'Admin')}</div></div><label class="field"><span>Bill date</span><input name="expenseDate" type="date" value="${new Date().toISOString().slice(0,10)}" required></label><label class="field"><span>Due date</span><input name="dueDate" type="date" required></label><fieldset class="split-field"><legend>Split with</legend>${members.map(m=>`<label><input type="checkbox" name="member" value="${m.id}" checked><span>${escapeHtml(m.name)}</span></label>`).join('')}<small>Preset · All 4 Equally</small></fieldset><div id="utility-preview" class="split-preview"></div><button class="primary-action" type="submit">Review & save</button></form>`;
  sheet.showModal();const closeButton=content.querySelector('[data-close-sheet]'),form=content.querySelector('#utility-form');

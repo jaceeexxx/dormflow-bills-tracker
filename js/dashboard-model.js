@@ -1,4 +1,4 @@
-import {normalizeCategory} from './read-model-v3.js';
+import {normalizeCategory,formatPeso} from './read-model-v3.js';
 
 const asNum=v=>Number(v||0);
 const byDate=(a,b)=>String(b.date||'').localeCompare(String(a.date||''));
@@ -7,10 +7,17 @@ export function cleanActivityMethod(value){const raw=String(value||'').trim();re
 function memberMap(members=[]){return new Map(members.map(m=>[m.id,{...m,name:m.name||m.display_name||m.profiles?.display_name||'Member'}]));}
 function allocationMap(rows=[]){const map=new Map();for(const row of rows)map.set(row.obligation_id,(map.get(row.obligation_id)||0)+asNum(row.amount_cents));return map;}
 
-export function buildAdminDashboard({base={},expenses=[],obligations=[],allocations=[],members=[],payments=[]}={}){
+export function buildAdminDashboard({base={},expenses=[],obligations=[],allocations=[],members=[],payments=[],periods=[],paylaterAccounts=[],paylaterInstallments=[]}={}){
   const people=memberMap(members),paid=allocationMap(allocations),periodId=base.period_id||base.periodId||null,periodMonth=base.period_month||base.periodMonth||null;
   const totalCents=expenses.reduce((sum,row)=>sum+asNum(row.amount_cents),0);
-  const open=obligations.map(row=>({...row,outstandingCents:Math.max(0,asNum(row.original_amount_cents)-asNum(paid.get(row.id)))})).filter(row=>row.outstandingCents>0);
+  const periodById=new Map((periods||[]).map(row=>[row.id,row]));
+  const throughActive=(row)=>{
+    if(!periodMonth||!row?.period_id)return true;
+    const month=periodById.get(row.period_id)?.month;
+    return !month||String(month).slice(0,10)<=String(periodMonth).slice(0,10);
+  };
+  const visibleObligations=(obligations||[]).filter(throughActive);
+  const open=visibleObligations.map(row=>({...row,outstandingCents:Math.max(0,asNum(row.original_amount_cents)-asNum(paid.get(row.id)))})).filter(row=>row.outstandingCents>0);
   const outstandingCents=asNum(base.outstanding_cents??base.outstandingCents??open.reduce((s,x)=>s+x.outstandingCents,0));
   const settledCents=Math.max(0,totalCents-outstandingCents);
   const settledRate=totalCents?Math.max(0,Math.min(100,(settledCents/totalCents)*100)):0;
@@ -30,11 +37,53 @@ export function buildAdminDashboard({base={},expenses=[],obligations=[],allocati
 
   const currentOpen=open.filter(row=>!periodId||row.period_id===periodId);
   const memberSettlement=members.map(member=>{
-    const outstanding=currentOpen.filter(x=>x.debtor_member_id===member.id).reduce((s,x)=>s+x.outstandingCents,0);
-    return {id:member.id,name:people.get(member.id)?.name||'Member',accent:member.accent||'#6b7d76',outstandingCents:outstanding,status:outstanding>0?'open':'settled'};
-  }).sort((a,b)=>b.outstandingCents-a.outstandingCents||a.name.localeCompare(b.name));
+    const needsToPayCents=open.filter(x=>x.debtor_member_id===member.id).reduce((s,x)=>s+x.outstandingCents,0);
+    const owedToMemberCents=open.filter(x=>x.creditor_member_id===member.id).reduce((s,x)=>s+x.outstandingCents,0);
+    const netPositionCents=owedToMemberCents-needsToPayCents;
+    return {
+      id:member.id,
+      name:people.get(member.id)?.name||'Member',
+      accent:member.accent||'#6b7d76',
+      needsToPayCents,
+      owedToMemberCents,
+      netPositionCents,
+      outstandingCents:needsToPayCents,
+      status:needsToPayCents>0?'open':'settled'
+    };
+  }).sort((a,b)=>b.needsToPayCents-a.needsToPayCents||b.owedToMemberCents-a.owedToMemberCents||a.name.localeCompare(b.name));
 
-  const upcoming=currentOpen.filter(x=>x.due_date).sort((a,b)=>String(a.due_date).localeCompare(String(b.due_date))).slice(0,5).map(row=>({id:row.id,date:row.due_date,label:`${people.get(row.debtor_member_id)?.name||'Member'} → ${people.get(row.creditor_member_id)?.name||row.creditor_label||'Household'}`,amountCents:row.outstandingCents,category:normalizeCategory(row.source_category)}));
+  const accountById=new Map((paylaterAccounts||[]).map(row=>[row.id,row]));
+  const paylaterUpcoming=(paylaterInstallments||[])
+    .filter(row=>(!periodId||row.period_id===periodId)&&row.status!=='void'&&row.due_date)
+    .map(row=>{
+      const account=accountById.get(row.account_id)||{};
+      const borrowerName=account.borrower_label||people.get(account.borrower_member_id)?.name||'Borrower';
+      const reimbursementCents=currentOpen
+        .filter(ob=>ob.source_paylater_installment_id===row.id)
+        .reduce((sum,ob)=>sum+ob.outstandingCents,0);
+      return {
+        id:row.id,
+        date:row.due_date,
+        label:`${account.provider||'PayLater'} · ${borrowerName}`,
+        detail:`${borrowerName} pays provider · roommates reimburse ${formatPeso(reimbursementCents)}`,
+        amountCents:asNum(row.amount_cents),
+        category:'PayLater / Loans',
+        kind:'paylater'
+      };
+    });
+  const obligationUpcoming=currentOpen
+    .filter(row=>row.due_date&&!row.source_paylater_installment_id)
+    .map(row=>({
+      id:row.id,
+      date:row.due_date,
+      label:`${people.get(row.debtor_member_id)?.name||'Member'} → ${people.get(row.creditor_member_id)?.name||row.creditor_label||'Household'}`,
+      detail:'Outstanding household obligation',
+      amountCents:row.outstandingCents,
+      category:normalizeCategory(row.source_category),
+      kind:'obligation'
+    }));
+  const upcoming=[...paylaterUpcoming,...obligationUpcoming]
+    .sort((a,b)=>String(a.date).localeCompare(String(b.date))||b.amountCents-a.amountCents);
 
   const expenseActivity=expenses.map(x=>({kind:'expense',id:x.id,date:x.expense_date||x.created_at||'',title:x.description||normalizeCategory(x.category),subtitle:normalizeCategory(x.category),amountCents:asNum(x.amount_cents)}));
   const paymentActivity=payments.map(x=>({kind:'payment',id:x.id,date:x.paid_at||x.created_at||'',title:`${people.get(x.payer_member_id)?.name||'Member'} paid ${people.get(x.payee_member_id)?.name||'Member'}`,subtitle:cleanActivityMethod(x.method),amountCents:asNum(x.amount_cents)}));

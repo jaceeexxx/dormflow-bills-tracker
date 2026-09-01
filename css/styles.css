@@ -492,3 +492,193 @@ html,body{
 .pin-error{height:34px;padding-top:10px;font-size:13px;color:#a23a2c}.pin-keypad{width:min(100%,330px);display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:auto}.pin-keypad button,.pin-keypad>span{height:68px}.pin-keypad button{border:0;border-radius:22px;background:#fff;font:700 24px/1 inherit;box-shadow:0 5px 18px rgba(18,54,45,.07);color:#163e34}.pin-keypad button:active{transform:scale(.96);background:#edf2ef}.pin-password-fallback{border:0;background:transparent;color:var(--brand,#0d493c);font-weight:700;margin-top:24px;padding:12px}
 .pin-shake{animation:pin-shake .32s ease}@keyframes pin-shake{25%{transform:translateX(-8px)}50%{transform:translateX(8px)}75%{transform:translateX(-4px)}}
 .foreground-push-banner{position:fixed;z-index:1200;top:max(14px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);width:min(420px,calc(100% - 24px));border:1px solid rgba(14,64,53,.12);border-radius:18px;background:rgba(255,255,255,.96);box-shadow:0 18px 44px rgba(11,50,41,.18);padding:14px 16px;text-align:left;display:grid;gap:3px;color:var(--ink,#10251f);backdrop-filter:blur(16px)}.foreground-push-banner strong{font-size:14px}.foreground-push-banner span{font-size:12px;color:var(--muted,#65736c);line-height:1.35}
+
+/* DormFlow v3.3.2 — iPhone beta layout stabilization */
+.paylater-mode{
+  display:grid;
+  gap:10px;
+  border:0;
+  margin:0;
+  padding:0;
+  min-width:0;
+}
+.paylater-mode legend{
+  padding:0;
+  margin:0 0 2px;
+  color:var(--text);
+  font-size:12px;
+  font-weight:800;
+}
+.paylater-mode>label{
+  display:grid;
+  grid-template-columns:24px minmax(0,1fr);
+  gap:11px;
+  align-items:start;
+  min-width:0;
+  padding:13px 14px;
+  border:1px solid var(--line);
+  border-radius:15px;
+  background:var(--surface-soft);
+  cursor:pointer;
+}
+.paylater-mode>label:has(input:checked){
+  border-color:#8ab4a5;
+  background:var(--brand-soft);
+  box-shadow:0 0 0 2px rgba(23,107,85,.06);
+}
+.paylater-mode>label>input{
+  width:20px;
+  height:20px;
+  margin:1px 0 0;
+  accent-color:var(--brand);
+}
+.paylater-mode>label>span{
+  display:grid;
+  gap:3px;
+  min-width:0;
+}
+.paylater-mode>label strong,
+.paylater-mode>label small{
+  display:block;
+  min-width:0;
+  white-space:normal;
+  overflow-wrap:anywhere;
+}
+.paylater-mode>label strong{font-size:13px;line-height:1.25}
+.paylater-mode>label small{font-size:10px;line-height:1.45;color:var(--muted)}
+
+.screen-back-button{
+  min-height:44px;
+  min-width:88px;
+  border:0;
+  border-radius:12px;
+  background:transparent;
+  color:var(--brand-deep);
+  display:inline-flex;
+  align-items:center;
+  justify-content:flex-start;
+  gap:7px;
+  padding:8px 12px 8px 4px;
+  margin:0 0 8px;
+  font-size:23px;
+  line-height:1;
+  font-weight:800;
+  cursor:pointer;
+  touch-action:manipulation;
+}
+.screen-back-button span{font-size:14px;line-height:1;font-weight:800}
+
+/* Rebuild the tiny header mark with real tiny geometry instead of scaling the
+   48px auth mark. This keeps the roof/strokes inside the iPhone header box. */
+.compact-brand .brand-mark.tiny{
+  transform:none;
+  transform-origin:center;
+  flex:0 0 32px;
+  width:32px;
+  height:32px;
+  min-width:32px;
+  margin:0;
+  overflow:hidden;
+}
+.compact-brand .brand-mark.tiny:before{inset:3px 4px 4px;border-width:2px}
+.compact-brand .brand-mark.tiny span{width:18px;height:18px;left:6px;top:1px;border-width:2px}
+.compact-brand .brand-mark.tiny i,
+.compact-brand .brand-mark.tiny b{width:8px;height:2px;bottom:9px}
+.compact-brand .brand-mark.tiny i{left:5px}
+.compact-brand .brand-mark.tiny b{right:5px}
+.compact-brand strong{font-size:14px;line-height:1.1;letter-spacing:-.02em}
+
+.toggle-row>span{
+  display:grid;
+  gap:4px;
+  min-width:0;
+}
+.toggle-row strong,
+.toggle-row small{display:block;min-width:0;white-space:normal;overflow-wrap:anywhere}
+.toggle-row strong{font-size:13px;line-height:1.3}
+.toggle-row small{font-size:10px;line-height:1.45;color:var(--muted)}
+
+.upcoming-row>div{
+  display:grid;
+  gap:3px;
+  min-width:0;
+}
+.upcoming-row strong,
+.upcoming-row small{display:block;min-width:0;white-space:normal;overflow-wrap:anywhere}
+.upcoming-row>b{white-space:nowrap;align-self:start}
+
+.settlement-financial-row{grid-template-columns:42px minmax(0,1fr);align-items:start;gap:12px;padding:14px 0}
+.settlement-financial-row .member-avatar{width:42px;height:42px}
+.settlement-name{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}
+.settlement-name strong{font-size:13px}
+.settlement-metrics{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:8px;
+  min-width:0;
+}
+.settlement-metrics>span{display:grid;gap:3px;min-width:0;padding:8px 9px;border-radius:11px;background:var(--surface-soft)}
+.settlement-metrics small{font-size:8px;line-height:1.25;color:var(--muted);white-space:normal}
+.settlement-metrics b{font-size:10px;line-height:1.25;white-space:nowrap;color:var(--ink)}
+.settlement-metrics b.positive{color:var(--brand)}
+.settlement-metrics b.negative{color:var(--red)}
+
+/* The cropper is a native dialog in v3.3.2, so reset browser dialog chrome and
+   let showModal() place it in the top layer above the profile bottom sheet. */
+.avatar-cropper-overlay{
+  border:0;
+  margin:0;
+  width:100vw;
+  height:100dvh;
+  max-width:none;
+  max-height:none;
+  padding:max(18px,env(safe-area-inset-top)) 18px max(18px,env(safe-area-inset-bottom));
+  background:rgba(9,20,16,.72);
+  display:grid;
+  place-items:center;
+  overflow:hidden;
+  backdrop-filter:blur(8px);
+}
+.avatar-cropper-overlay::backdrop{background:rgba(9,20,16,.72);backdrop-filter:blur(8px)}
+
+.file-readiness{
+  display:grid;
+  grid-template-columns:48px minmax(0,1fr);
+  gap:10px;
+  align-items:center;
+  min-width:0;
+  margin-top:8px;
+  padding:10px;
+  border:1px solid var(--line);
+  border-radius:13px;
+  background:var(--surface-soft);
+}
+.file-readiness-thumb{width:48px;height:48px;border-radius:10px;overflow:hidden;background:#e9efec;display:grid;place-items:center;color:var(--brand);font-size:10px;font-weight:800}
+.file-readiness-thumb img{width:100%;height:100%;display:block;object-fit:cover}
+.file-readiness>div{display:grid;gap:2px;min-width:0}
+.file-readiness strong{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.file-readiness small{font-size:9px;color:var(--brand);font-weight:750}
+
+@media(max-width:560px){
+  .compact-brand{max-width:128px;gap:6px}
+  .compact-brand strong{font-size:13px}
+  .toggle-row{display:grid;grid-template-columns:minmax(0,1fr) 28px;align-items:start;gap:10px;padding:13px 0}
+  .toggle-row input{justify-self:end;margin-top:2px}
+  .notification-settings-screen .bank-panel{padding-left:18px;padding-right:18px}
+  .relationship-row,.upcoming-row{grid-template-columns:minmax(0,1fr) auto;gap:8px 12px;align-items:start}
+  .upcoming-row{grid-template-columns:36px minmax(0,1fr)}
+  .upcoming-row>b{grid-column:2;justify-self:start;font-size:12px;margin-top:2px}
+  .upcoming-icon{grid-row:1 / span 2}
+  .settlement-metrics{grid-template-columns:1fr}
+  .settlement-metrics>span{grid-template-columns:minmax(0,1fr) auto;align-items:center}
+  .settlement-metrics small{font-size:9px}
+  .settlement-metrics b{font-size:11px}
+  .avatar-cropper-card{width:100%;max-width:390px}
+}
+
+/* DormFlow v3.3.2 — truthful push diagnostics */
+.push-diagnostics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:12px 0 16px}
+.push-diagnostics>span{display:grid;gap:3px;min-width:0;padding:10px 11px;border:1px solid var(--line);border-radius:12px;background:var(--surface-soft)}
+.push-diagnostics small{font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:800}
+.push-diagnostics b{font-size:10px;overflow-wrap:anywhere}.push-test-actions{flex-wrap:wrap}.push-test-actions .secondary-action{flex:1 1 150px}.push-test-actions .text-action{min-height:44px}
+@media(max-width:560px){.push-diagnostics{grid-template-columns:1fr}.push-test-actions{display:grid;grid-template-columns:1fr}.push-test-actions .secondary-action,.push-test-actions .text-action{width:100%}}

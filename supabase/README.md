@@ -17,3 +17,9 @@ Run `migrate-v3.3.sql` once. Do not rerun `schema.sql`, `seed-members.sql`, `mig
 ## Existing v3.3 household → v3.3.1
 
 Run `migrate-v3.3.1.sql` **once** in the Supabase SQL Editor. Do not rerun `schema.sql`, `seed-members.sql`, `migrate-history.sql`, `migrate-v3.2.sql`, or `migrate-v3.3.sql` on an already-configured v3.3 project. The v3.3.1 migration is additive: it adds the beta-stabilization audit, PayLater reimbursement, edit/archive, and notification support while preserving historical obligations, payments, and the active-month/carry-forward model.
+
+## Existing v3.3.1 household → v3.3.2
+
+Run `migrate-v3.3.2.sql` **once** in Supabase SQL Editor. Do not rerun `schema.sql`, `seed-members.sql`, `migrate-history.sql`, `migrate-v3.2.sql`, `migrate-v3.3.sql`, or `migrate-v3.3.1.sql` on the existing project.
+
+The v3.3.2 migration is targeted to the second beta stabilization: it filters current read models through the active billing month and reconciles only legacy migrated PayLater accounts (`created_by is null`) to the canonical workbook schedule. It rebuilds only scheduled reimbursement obligations with no payment/credit history and preserves posted August and settled history.
