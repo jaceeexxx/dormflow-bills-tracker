@@ -41,7 +41,8 @@ test('app routes the test-push action through authenticated client delivery',()=
 
 test('push-test endpoint authenticates current member, waits five seconds, and reports real delivery',()=>{
   const src=read('api/push-test.js');
-  assert.match(src,/authUser/);
+  assert.match(src,/currentIdentityFromToken/);
+  assert.doesNotMatch(src,/\/rest\/v1\/profiles/);
   assert.match(src,/push_subscriptions/);
   assert.match(src,/is_active=eq\.true/);
   assert.match(src,/setTimeout\(resolve,5000\)/);

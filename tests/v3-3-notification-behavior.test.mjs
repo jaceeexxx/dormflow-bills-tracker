@@ -51,7 +51,8 @@ test('push permission is requested only by explicit enable function',()=>{
 
 test('push-event is authenticated, household scoped, preference aware, and separate from financial writes',()=>{
   const src=fs.existsSync('api/push-event.js')?fs.readFileSync('api/push-event.js','utf8'):'';
-  assert.match(src,/authUser/);
+  assert.match(src,/currentIdentityFromToken/);
+  assert.doesNotMatch(src,/\/rest\/v1\/profiles/);
   assert.match(src,/household_id/);
   assert.match(src,/notification_preferences/);
   assert.match(src,/push_attempted_at/);
@@ -73,7 +74,8 @@ test('database creates approved Inbox event types without preference-gated recip
 test('client requests target push after financial writes',()=>{
   const files=['js/member-payments.js','js/admin-review.js','js/admin-generic-v3.js','js/admin-utilities-v3.js','js/announcements-v3.js'];
   const combined=files.map(f=>fs.readFileSync(f,'utf8')).join('\n');
-  assert.match(combined,/requestPushForTarget/);
+  assert.match(combined,/queuePushForTarget/);
+  assert.doesNotMatch(combined,/await\s+requestPushForTarget/);
   assert.match(combined,/targetType/);
   assert.match(combined,/targetId/);
 });
@@ -99,4 +101,3 @@ test('service worker opens the push payload URL instead of always opening Inbox'
   assert.match(sw,/client\.navigate\(url\)/);
   assert.match(sw,/openWindow\(url\)/);
 });
-

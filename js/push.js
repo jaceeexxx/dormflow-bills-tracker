@@ -76,8 +76,7 @@ export async function enablePush(identity){
   }
   if(!subscription)subscription=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(config.vapidPublicKey)});
   await registerWithServer(subscription);
-  const status=await pushCapabilityStatus(identity);
-  if(!status.serverRegistered||!status.vapidMatches)throw new Error('Push subscription could not be verified. Tap Enable push again.');
+  if(!subscriptionMatchesVapid(subscription,config.vapidPublicKey))throw new Error('Push subscription could not be verified. Tap Enable push again.');
   return subscription;
 }
 

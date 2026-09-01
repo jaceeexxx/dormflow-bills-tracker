@@ -1,6 +1,24 @@
 function submitButton(form){return form.querySelector('button[type="submit"],input[type="submit"]');}
 export function snapshotForm(form){const data=new FormData(form);return JSON.stringify([...data.entries()].map(([k,v])=>[k,v instanceof File?`${v.name}:${v.size}:${v.lastModified}`:String(v)]));}
 function notifyDefault(message,type='success'){if(typeof window!=='undefined')window.dispatchEvent(new CustomEvent('dormflow:toast',{detail:{message,type}}));}
+export function saveErrorMessage(error){return error?.message||'Could not save changes. Try again.';}
+export function ensureFormError(form){
+  let error=form?.querySelector?.('[data-form-error]');
+  if(error)return error;
+  const doc=form?.ownerDocument||(typeof document!=='undefined'?document:null);
+  if(!doc?.createElement)return null;
+  error=doc.createElement('p');
+  error.className='form-error';
+  error.setAttribute('data-form-error','');
+  error.setAttribute('role','alert');
+  error.setAttribute('aria-live','polite');
+  error.hidden=true;
+  const button=submitButton(form);
+  if(button?.before)button.before(error);else form.append?.(error);
+  return error;
+}
+export function clearFormError(form){const error=form?.querySelector?.('[data-form-error]');if(!error)return;error.textContent='';error.hidden=true;error.setAttribute?.('hidden','');}
+export function showFormError(form,message){const error=ensureFormError(form);if(!error)return;error.textContent=message;error.hidden=false;error.removeAttribute?.('hidden');}
 
 export function requireActivePeriod(periodId){if(!periodId)throw new Error('No active billing month is available. Open Monthly setup and make a month current first.');return periodId;}
 
@@ -18,14 +36,17 @@ export function bindSaveFlow(form,{idleLabel='Save',savingLabel='Saving…',succ
   const setButton=(label,disabled)=>{if(!button)return;button.disabled=disabled;if(button.tagName==='INPUT')button.value=label;else button.textContent=label;};
   const handler=async event=>{
     event.preventDefault();if(busy)return;busy=true;setButton(savingLabel,true);
+    clearFormError(form);
+    let result;
     try{
-      const result=await save(new FormData(form),form);
-      notify(successMessage,'success');
-      close();
-      await onSaved(result);
+      try{
+        result=await save(new FormData(form),form);
+      }catch(error){const message=saveErrorMessage(error);showFormError(form,message);notify(message,'error');throw error;}
+      try{
+        notify(successMessage,'success');close();await onSaved(result);
+      }catch(error){notify(error?.message||'Saved, but the screen could not refresh.','error');}
       return result;
-    }catch(error){notify(error?.message||'Could not save changes. Try again.','error');throw error;}
-    finally{busy=false;setButton(idleLabel,false);}
+    }finally{busy=false;setButton(idleLabel,false);}
   };
   form.addEventListener('submit',event=>{handler(event).catch(()=>{});});
   return {submit:handler,isSaving:()=>busy};

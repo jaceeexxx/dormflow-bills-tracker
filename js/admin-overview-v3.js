@@ -4,6 +4,7 @@ import {ADMIN_ADD_ACTIONS} from './admin-actions.js';
 import {buildAdminDashboard} from './dashboard-model.js';
 import {icon} from './icons.js';
 import {formatBillingMonth} from './months.js';
+import {householdMemberDirectory} from './member-directory.js';
 
 const palette=['#0f6b57','#f39a3d','#294c7a','#b7a164'];
 const categoryIcon=label=>label.includes('Housing')?'utilities':label.includes('Grocer')?'grocery':label.includes('PayLater')?'paylater':'wallet';
@@ -15,14 +16,14 @@ export async function loadAdminOverview(){
     supabase.select('expenses',`select=id,period_id,description,category,amount_cents,due_date,expense_date,created_at,status&status=eq.active${periodId?`&period_id=eq.${periodId}`:''}&order=amount_cents.desc`),
     supabase.select('obligations','select=id,period_id,debtor_member_id,creditor_member_id,creditor_label,original_amount_cents,due_date,source_category,source_paylater_installment_id'),
     supabase.select('payment_allocations','select=obligation_id,amount_cents'),
-    supabase.select('household_members','select=id,role,accent,is_active,profiles(display_name)&is_active=eq.true'),
+    householdMemberDirectory(),
     supabase.select('payments','select=id,payer_member_id,payee_member_id,amount_cents,paid_at,method,status,created_at&order=paid_at.desc&limit=8'),
     supabase.select('announcements','select=id,title,priority,is_active,starts_at,ends_at&order=created_at.desc&limit=8').catch(()=>[]),
     supabase.select('billing_periods','select=id,month,status&order=month.asc'),
     supabase.select('paylater_accounts','select=id,provider,borrower_member_id,borrower_label,status&status=neq.void'),
     supabase.select('paylater_installments',`select=id,account_id,period_id,due_date,amount_cents,sequence_no,status&status=neq.void${periodId?`&period_id=eq.${periodId}`:''}&order=due_date.asc`)
   ]);
-  const members=memberRows.map(r=>({id:r.id,name:r.profiles?.display_name||'Member',accent:r.accent,role:r.role}));
+  const members=memberRows.map(r=>({id:r.id,name:r.name||r.displayName||'Member',accent:r.accent,role:r.role}));
   return {...buildAdminDashboard({base,expenses,obligations,allocations,members,payments,periods,paylaterAccounts,paylaterInstallments}),activeAnnouncements:(announcements||[]).filter(a=>a.is_active).length,latestAnnouncements:announcements||[]};
 }
 

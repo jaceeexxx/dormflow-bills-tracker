@@ -1,7 +1,7 @@
 import {supabase} from './auth.js';
 import {escapeHtml} from './read-model-v3.js';
 import {icon} from './icons.js';
-import {requestPushForTarget} from './notifications.js';
+import {queuePushForTarget} from './notifications.js';
 import {bindSaveFlow,bindDirtyClose} from './form-flow.js';
 export function activeAnnouncement(a,now=Date.now()){if(!a?.is_active)return false;const start=Date.parse(a.starts_at||0);const end=a.ends_at?Date.parse(a.ends_at):Infinity;return start<=now&&now<end;}
 export function buildAnnouncementPayload({householdId,title,body,priority='normal',startsAt,endsAt,notifyHousehold=false,actorId}){return {household_id:householdId,title:String(title).trim(),body:String(body).trim(),priority,starts_at:new Date(startsAt).toISOString(),ends_at:endsAt?new Date(endsAt).toISOString():null,is_active:true,notify_household:Boolean(notifyHousehold),created_by:actorId,updated_by:actorId};}
@@ -23,6 +23,7 @@ export async function openAnnouncementSheet({identity,onDone=()=>{},existing=nul
   content.innerHTML=`<form id="announcement-form" class="sheet-body"><div class="sheet-grabber"></div><div class="sheet-head"><h2>${existing?'Edit':'Announcement'}</h2><button class="icon-plain" data-close-sheet type="button">×</button></div><label class="field"><span>Title</span><input name="title" maxlength="120" value="${escapeHtml(existing?.title||'')}" required></label><label class="field"><span>Message</span><textarea name="body" rows="3" maxlength="1000" required>${escapeHtml(existing?.body||'')}</textarea></label><label class="field"><span>Priority</span><select name="priority"><option value="normal">Normal</option><option value="important">Important</option><option value="urgent">Urgent</option></select></label><label class="field"><span>Starts</span><input name="startsAt" type="datetime-local" value="${local(existing?.starts_at)||new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16)}" required></label><label class="field"><span>Ends <small>optional</small></span><input name="endsAt" type="datetime-local" value="${local(existing?.ends_at)}"></label><label class="check-row"><input name="notify" type="checkbox" ${existing?.notify_household?'checked':''}><span>Notify household</span></label><button class="primary-action" type="submit">${existing?'Save':'Post announcement'}</button></form>`;
   sheet.showModal();
   const form=content.querySelector('#announcement-form'),closeButton=content.querySelector('[data-close-sheet]');
+  let shouldPush=false;
   if(existing)form.priority.value=existing.priority;
   bindDirtyClose({form,closeButtons:[closeButton],close:()=>sheet.close()});
   bindSaveFlow(form,{
@@ -37,9 +38,9 @@ export async function openAnnouncementSheet({identity,onDone=()=>{},existing=nul
         return existing.id;
       }
       const announcementId=await createAnnouncement(payload);
-      if(payload.notify_household)await requestPushForTarget({targetType:'announcement',targetId:announcementId});
+      shouldPush=payload.notify_household;
       return announcementId;
     },
-    onSaved:onDone
+    onSaved:async id=>{if(shouldPush)queuePushForTarget({targetType:'announcement',targetId:id});await onDone(id);}
   });
 }

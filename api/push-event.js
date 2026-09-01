@@ -1,4 +1,4 @@
-import {serviceRequest,authUser} from '../lib/server-supabase.js';
+import {serviceRequest,currentIdentityFromToken} from '../lib/server-supabase.js';
 import {sendPushWithCleanup} from '../lib/push-server.js';
 
 function preferenceForType(type=''){
@@ -23,13 +23,13 @@ export default async function handler(req,res){
   if(req.method!=='POST')return res.status(405).json({error:'Method not allowed'});
   try{
     const token=(req.headers.authorization||'').replace(/^Bearer\s+/i,'');
-    const user=await authUser(token);const profiles=await serviceRequest(`/rest/v1/profiles?select=id,household_members(id,role,household_id,is_active)&user_id=eq.${user.id}`);
-    const membership=profiles?.[0]?.household_members?.find?.(m=>m.is_active!==false)||profiles?.[0]?.household_members?.[0];
-    if(!membership?.household_id)return res.status(403).json({error:'Household membership required'});
+    const identity=await currentIdentityFromToken(token);
+    const householdId=identity.household_id||identity.householdId;
+    if(!householdId)return res.status(403).json({error:'Household membership required'});
     const targetType=String(req.body?.targetType||'').trim(),targetId=String(req.body?.targetId||'').trim();
     if(!targetType||!targetId)return res.status(400).json({error:'targetType and targetId are required'});
 
-    const notes=await serviceRequest(`/rest/v1/notifications?select=id,type,title,body,recipient_member_id,push_attempted_at,push_sent_at&household_id=eq.${membership.household_id}&target_type=eq.${encodeURIComponent(targetType)}&target_id=eq.${targetId}&order=created_at.asc`);
+    const notes=await serviceRequest(`/rest/v1/notifications?select=id,type,title,body,recipient_member_id,push_attempted_at,push_sent_at&household_id=eq.${householdId}&target_type=eq.${encodeURIComponent(targetType)}&target_id=eq.${targetId}&order=created_at.asc`);
     let attempted=0,delivered=0,skipped=0;
     for(const note of notes||[]){
       if(note.push_attempted_at)continue;

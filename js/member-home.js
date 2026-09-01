@@ -4,6 +4,7 @@ import {buildMemberDashboard} from './dashboard-model.js';
 import {icon} from './icons.js';
 import {signedHouseholdMediaUrl} from './household-media.js';
 import {formatBillingMonth} from './months.js';
+import {householdMemberDirectory} from './member-directory.js';
 
 export async function loadMemberHome(){
   if(!navigator.onLine){const cached=loadOfflineSummary();if(!cached)throw new Error('Reconnect to view your balance.');return {offline:true,vm:{memberId:cached.memberId,name:cached.displayName,balance:cached.lastKnownBalance,dueSoon:cached.dueSoonTotal,creditors:[],household:{total:0,categories:[]},personalCategories:[],recent:[]},lastSyncedAt:cached.lastSyncedAt};}
@@ -12,10 +13,10 @@ export async function loadMemberHome(){
     supabase.select('expense_splits',`select=amount_cents,expenses(category,period_id,status)&member_id=eq.${base.memberId}`),
     supabase.select('payment_claims','select=id,amount_cents,paid_at,method,status,created_at&order=created_at.desc&limit=5'),
     supabase.select('payments','select=id,amount_cents,paid_at,method,status,created_at&order=paid_at.desc&limit=5'),
-    supabase.select('household_members','select=id,profiles(display_name,avatar_path)&is_active=eq.true')
+    householdMemberDirectory()
   ]);
   const vm=buildMemberDashboard({home:{vm:base},splits,claims,payments});
-  const avatarPathByMemberId=new Map((householdMembers||[]).map(member=>[member.id,member.profiles?.avatar_path||'']));
+  const avatarPathByMemberId=new Map((householdMembers||[]).map(member=>[member.id,member.avatarPath||member.avatar_path||'']));
   vm.creditors=await Promise.all((vm.creditors||[]).map(async creditor=>{
     const path=avatarPathByMemberId.get(creditor.memberId||creditor.member_id)||'';
     if(!path)return creditor;

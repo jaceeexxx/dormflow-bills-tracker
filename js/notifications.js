@@ -50,6 +50,10 @@ export async function requestPushForTarget({targetType,targetId}={}){
     return data;
   }catch(error){return {ok:false,error:error?.message||String(error)};}
 }
+export function queuePushForTarget(target){
+  const job=Promise.resolve().then(()=>requestPushForTarget(target)).catch(error=>({ok:false,error:error?.message||String(error)}));
+  return {ok:true,queued:true,job};
+}
 
 function notificationIcon(type=''){if(type.includes('payment'))return 'payments';if(type==='announcement')return 'announcement';if(type.includes('due')||type==='overdue')return 'calendar';if(type.includes('expense')||type==='utility_added'||type.includes('paylater'))return 'wallet';return 'notifications';}
 export function renderNotifications(rows=[]){const unread=rows.filter(n=>!n.read_at).length;return `<section class="screen banking-dashboard notifications-screen"><div class="bank-page-head"><div><span class="screen-kicker">Inbox · Always on</span><h1>Notifications</h1></div><button class="mode-switch-card compact-mode" data-route="notification-settings" type="button"><span>${icon('settings')}</span><div><strong>Push settings</strong><small>Choose which alerts reach your device</small></div><b>›</b></button></div><section class="review-summary-card notification-summary"><span class="summary-icon">${icon('notifications')}</span><div><small>Unread</small><strong>${unread}</strong></div><div><small>Total</small><strong>${rows.length}</strong></div></section><article class="bank-panel"><div class="notification-bank-list">${rows.map(n=>`<button class="notification-bank-card ${n.read_at?'':'unread'}" data-notification-id="${n.id}" data-notification-type="${escapeHtml(n.type)}"><span class="notification-card-icon">${icon(notificationIcon(n.type))}</span><div><strong>${escapeHtml(n.title)}</strong><small>${escapeHtml(n.body)}</small></div><time>${new Date(n.created_at).toLocaleDateString('en-PH',{month:'short',day:'numeric'})}</time>${n.read_at?'':'<i></i>'}</button>`).join('')||'<div class="empty-state-bank"><strong>No notifications</strong><span>Payment, due-date and household updates will appear here.</span></div>'}</div></article></section>`;}

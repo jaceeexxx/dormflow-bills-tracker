@@ -1,9 +1,10 @@
 import {supabase} from './auth.js';
 import {buildUtilityPayload,parseMoneyCents} from './admin-actions.js';
 import {escapeHtml} from './read-model-v3.js';
-import {requestPushForTarget} from './notifications.js';
+import {queuePushForTarget} from './notifications.js';
 import {bindSaveFlow,bindDirtyClose,requireActivePeriod} from './form-flow.js';
-async function activeMembers(){const rows=await supabase.select('household_members','select=id,role,is_active,profiles(display_name)&is_active=eq.true');return rows.map(r=>({id:r.id,name:r.profiles?.display_name||'Member',role:r.role}));}
+import {householdMemberDirectory} from './member-directory.js';
+async function activeMembers(){return householdMemberDirectory();}
 export async function openUtilitySheet({identity,periodId,onDone=()=>{}}){
  requireActivePeriod(periodId);
  const members=await activeMembers();const sheet=document.querySelector('#sheet'),content=document.querySelector('#sheet-content');
@@ -11,6 +12,6 @@ export async function openUtilitySheet({identity,periodId,onDone=()=>{}}){
  sheet.showModal();const closeButton=content.querySelector('[data-close-sheet]'),form=content.querySelector('#utility-form');
  const update=()=>{try{const amount=parseMoneyCents(form.amount.value||'0');const ids=[...form.querySelectorAll('input[name=member]:checked')].map(x=>x.value);if(!ids.length)return;const base=Math.floor(amount/ids.length),extra=amount-base*ids.length;content.querySelector('#utility-preview').textContent=`${ids.length} people · ${(base/100).toFixed(2)} each${extra?' · centavos reconciled':''}`;}catch{content.querySelector('#utility-preview').textContent='';}};form.addEventListener('input',update);
  bindDirtyClose({form,closeButtons:[closeButton],close:()=>sheet.close()});
- bindSaveFlow(form,{idleLabel:'Review & save',successMessage:'Successfully saved',close:()=>sheet.close(),save:async data=>{if(!navigator.onLine)throw new Error('Reconnect before recording a utility.');const ids=data.getAll('member'),amount=parseMoneyCents(data.get('amount')),type=data.get('utilityType'),desc=type==='electricity'?'Meralco':type==='wifi'?'PLDT WiFi':'Water',payload=buildUtilityPayload({householdId:identity.householdId||identity.household_id,periodId,adminMemberId:identity.memberId||identity.member_id,activeMemberIds:ids,utilityType:type,description:desc,amountCents:amount,dueDate:data.get('dueDate'),expenseDate:data.get('expenseDate')});const expenseId=await supabase.rpc('create_expense_v3',payload);await requestPushForTarget({targetType:'expense',targetId:expenseId});return expenseId;},onSaved});
+ bindSaveFlow(form,{idleLabel:'Review & save',successMessage:'Successfully saved',close:()=>sheet.close(),save:async data=>{if(!navigator.onLine)throw new Error('Reconnect before recording a utility.');const ids=data.getAll('member'),amount=parseMoneyCents(data.get('amount')),type=data.get('utilityType'),desc=type==='electricity'?'Meralco':type==='wifi'?'PLDT WiFi':'Water',payload=buildUtilityPayload({householdId:identity.householdId||identity.household_id,periodId,adminMemberId:identity.memberId||identity.member_id,activeMemberIds:ids,utilityType:type,description:desc,amountCents:amount,dueDate:data.get('dueDate'),expenseDate:data.get('expenseDate')});const expenseId=await supabase.rpc('create_expense_v3',payload);return expenseId;},onSaved:async id=>{queuePushForTarget({targetType:'expense',targetId:id});await onDone(id);}});
 
 }
