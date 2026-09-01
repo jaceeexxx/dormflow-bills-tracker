@@ -82,6 +82,43 @@ test('balance due schedule keeps deadline groups in scan order', () => {
   }
 });
 
+test('balance renderer understands object-shaped member balance detail RPC groups', () => {
+  const html = renderMemberBalance({
+    credit_cents:7000,
+    credit_breakdown:[
+      {
+        creditor_display_name:'Jace',
+        remaining_amount_cents:7000,
+        source_payment_method:'MariBank'
+      }
+    ],
+    category_breakdown:[
+      {label:'Groceries', amount_cents:35600, item_count:1}
+    ],
+    due_groups:{
+      overdue:[],
+      due_soon:[
+        {
+          id:'obligation-1',
+          source_category:'Rent',
+          display_name:'Jace',
+          outstanding_cents:30000,
+          due_date:'2026-09-07',
+          due_status:'due_soon'
+        }
+      ],
+      later:[],
+      no_due_date:[]
+    }
+  });
+
+  assert.match(html, /Rent/);
+  assert.match(html, /Jace &middot; Sep 7/);
+  assert.match(html, /Credit with Jace/);
+  assert.match(html, /Groceries/);
+  assert.doesNotMatch(html, /No due within 5 days/);
+});
+
 test('payment profile sheet source includes obligation breakdown next to the QR', () => {
   const source = read('js/people-settings.js');
   assert.match(source, /balanceDetail/);

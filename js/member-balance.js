@@ -17,8 +17,8 @@ const todayIso=()=>new Date().toISOString().slice(0,10);
 const dateOnly=value=>String(value||'').slice(0,10);
 function parseDateKey(value){const date=dateOnly(value);const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(date);return m?Date.UTC(Number(m[1]),Number(m[2])-1,Number(m[3])):null;}
 function displayDate(value){const date=dateOnly(value);if(!date)return 'No due date';return new Date(`${date}T00:00:00`).toLocaleDateString('en-PH',{month:'short',day:'numeric'});}
-function categoryLabel(item={}){return String(item.category||item.source_category||item.source_type||'Expense').replaceAll('_',' ');}
-function memberName(item={}){return String(item.display_name||item.name||item.label||'Housemate');}
+function categoryLabel(item={}){return String(item.category||item.source_category||item.label||item.source_type||'Expense').replaceAll('_',' ');}
+function memberName(item={}){return String(item.display_name||item.creditor_display_name||item.name||item.label||'Housemate');}
 function dueMeta(key){return DUE_META[key]||DUE_META.no_due_date;}
 
 export function classifyDueStatus(item={},today=todayIso()){
@@ -45,9 +45,9 @@ function normalizeBreakdown(items=[]){
   return (items||[]).map(item=>({
     ...item,
     category:categoryLabel(item),
-    amount_cents:asNumber(item.amount_cents??item.outstanding_cents),
+    amount_cents:asNumber(item.amount_cents??item.outstanding_cents??item.remaining_amount_cents),
     due_date:dateOnly(item.due_date||item.earliest_due_date),
-    due_status:item.due_status||classifyDueStatus(item)
+    due_status:item.due_status||item.status||classifyDueStatus(item)
   })).filter(item=>item.amount_cents>0);
 }
 
@@ -114,6 +114,12 @@ function deriveDueGroups(raw={}){
     const byKey=new Map(explicit.map(group=>[group.key,{...group,items:normalizeBreakdown(group.items||[])}]));
     return DUE_ORDER.map(key=>({key,label:dueMeta(key).label,amount_cents:asNumber(byKey.get(key)?.amount_cents),items:byKey.get(key)?.items||[]}));
   }
+  if(explicit&&typeof explicit==='object'){
+    return DUE_ORDER.map(key=>{
+      const items=normalizeBreakdown(explicit[key]||[]);
+      return {key,label:dueMeta(key).label,amount_cents:items.reduce((sum,item)=>sum+asNumber(item.amount_cents),0),items};
+    });
+  }
   const byKey=new Map(DUE_ORDER.map(key=>[key,[]]));
   for(const item of raw.open_obligations||[]){
     const normalized=normalizeBreakdown([{...item,amount_cents:item.outstanding_cents??item.amount_cents}])[0];
@@ -169,7 +175,7 @@ export function renderMemberBalance(raw={}){
   const creditors=normalizeCreditors(raw.creditors||[]);
   const dueGroups=deriveDueGroups(raw);
   const categories=(raw.category_breakdown||[]).map(item=>({...item,amount_cents:asNumber(item.amount_cents)})).filter(item=>item.amount_cents>0);
-  const creditBreakdown=(raw.credit_breakdown||raw.creditBreakdown||[]).map(item=>({...item,amount_cents:asNumber(item.amount_cents)})).filter(item=>item.amount_cents>0);
+  const creditBreakdown=(raw.credit_breakdown||raw.creditBreakdown||[]).map(item=>({...item,amount_cents:asNumber(item.amount_cents??item.remaining_amount_cents)})).filter(item=>item.amount_cents>0);
   const outstanding=asNumber(raw.outstanding_cents),owed=asNumber(raw.owed_to_me_cents),credit=asNumber(raw.credit_cents),net=raw.net_position_cents===undefined?outstanding-owed-credit:asNumber(raw.net_position_cents);
   return `<section class="screen banking-dashboard balance-screen"><div class="bank-page-head"><div><span class="screen-kicker">Personal finances</span><h1>Balance</h1></div><button class="mode-switch-card compact-mode" type="button" data-route="payments"><span>${icon('transfer')}</span><div><strong>Payments</strong><small>History & claims</small></div><b>&rsaquo;</b></button></div>
     <section class="account-position-card bank-balance-card"><div><span>Current outstanding</span><strong>${formatPeso(outstanding)}</strong><small>${outstanding>0?'Open household balance':'You are settled'}</small></div><button type="button" data-action="report-payment">${icon('transfer')} Report payment</button></section>
