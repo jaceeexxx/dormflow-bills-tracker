@@ -152,7 +152,7 @@ function bindShell(){
   document.addEventListener('submit',e=>{if(e.target.id==='notification-preferences-form'){e.preventDefault();saveNotificationPreferenceForm(state.identity,e.target).then(()=>showToast('Preferences saved')).catch(err=>showToast(err.message));}});
   document.addEventListener('click',async e=>{
     try{
-      const profileMember=e.target.closest('[data-payment-profile]')?.dataset.paymentProfile;if(profileMember)return openPaymentProfileSheet(profileMember,{identity:state.identity});
+      const profileMember=e.target.closest('[data-payment-profile]')?.dataset.paymentProfile;if(profileMember){const balanceDetail=await loadMemberBalance().catch(()=>null);return openPaymentProfileSheet(profileMember,{identity:state.identity,balanceDetail});}
       const editPaymentMember=e.target.closest('[data-edit-payment-profile]')?.dataset.editPaymentProfile;if(editPaymentMember)return openPaymentMethodSheet({identity:state.identity,targetMemberId:editPaymentMember,onDone:()=>renderApp()});
       const copyText=e.target.closest('[data-copy-text]')?.dataset.copyText;if(copyText){await navigator.clipboard?.writeText(copyText);showToast('Payment details copied');return;}
             const noteButton=e.target.closest('[data-notification-id]');const noteId=noteButton?.dataset.notificationId;if(noteId){const rows=await loadNotifications(),note=rows.find(n=>n.id===noteId);await markRead(noteId);await refreshNotificationBadge();if(note){state.route=notificationRoute(note,state.identity);return renderApp();}return renderApp();}

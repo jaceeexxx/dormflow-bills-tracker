@@ -682,3 +682,189 @@ html,body{
 .push-diagnostics small{font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:800}
 .push-diagnostics b{font-size:10px;overflow-wrap:anywhere}.push-test-actions{flex-wrap:wrap}.push-test-actions .secondary-action{flex:1 1 150px}.push-test-actions .text-action{min-height:44px}
 @media(max-width:560px){.push-diagnostics{grid-template-columns:1fr}.push-test-actions{display:grid;grid-template-columns:1fr}.push-test-actions .secondary-action,.push-test-actions .text-action{width:100%}}
+
+/* DormFlow v3.3.4 - balance clarity and transfer breakdowns */
+.balance-payee-v2{
+  grid-template-columns:44px minmax(0,1fr) auto;
+  gap:12px;
+  align-items:center;
+  padding:14px 0;
+}
+.balance-payee-v2 .payee-avatar{width:44px;height:44px}
+.payee-main-copy{
+  display:grid;
+  gap:4px;
+  min-width:0;
+}
+.payee-line{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  min-width:0;
+  flex-wrap:wrap;
+}
+.balance-payee-v2 strong,
+.balance-payee-v2 small{
+  min-width:0;
+  overflow-wrap:anywhere;
+}
+.balance-payee-v2 strong{font-size:12px;line-height:1.25}
+.balance-payee-v2 small{font-size:9px;line-height:1.35;color:var(--muted)}
+.due-status-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  width:max-content;
+  max-width:100%;
+  min-height:21px;
+  padding:0 7px;
+  border-radius:999px;
+  background:#eef3f1;
+  color:#66756f;
+  font-size:7px;
+  line-height:1;
+  font-weight:850;
+  text-transform:uppercase;
+}
+.due-status-badge .app-icon{width:11px;height:11px}
+.due-status-badge.overdue{background:#faeaea;color:var(--red)}
+.due-status-badge.due_soon{background:#fff3df;color:#a8641d}
+.due-status-badge.later{background:#edf2f8;color:var(--navy)}
+.payee-amount-block{
+  display:grid;
+  grid-template-columns:auto 12px;
+  gap:8px;
+  align-items:center;
+  justify-content:end;
+  justify-items:end;
+  min-width:88px;
+}
+.payee-amount-block b{
+  font-size:12px;
+  line-height:1.2;
+  white-space:nowrap;
+}
+.payee-amount-block span{color:#aab5b0}
+.balance-due-panel .finance-detail-list{gap:12px}
+.balance-due-group{
+  display:grid;
+  gap:4px;
+  padding:0 0 12px;
+  border-bottom:1px solid #edf1ef;
+}
+.balance-due-group:last-child{border-bottom:0;padding-bottom:0}
+.balance-due-group-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  min-width:0;
+  padding:2px 0 4px;
+}
+.balance-due-group-head span{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-width:0;
+  color:var(--ink);
+  font-size:9px;
+  font-weight:850;
+  text-transform:uppercase;
+}
+.balance-due-group-head .app-icon{width:14px;height:14px;color:var(--brand)}
+.balance-due-group-head b{font-size:10px;white-space:nowrap}
+.finance-detail-row.balance-due-row,
+.finance-detail-row.category-detail-row{
+  display:grid;
+  grid-template-columns:32px minmax(0,1fr) auto;
+  align-items:center;
+  gap:10px;
+}
+.finance-detail-row.balance-due-row>span,
+.finance-detail-row.category-detail-row>span{min-width:0}
+.due-row-icon{
+  width:32px;
+  height:32px;
+  border-radius:11px;
+  background:#f1f6f4;
+  color:var(--brand);
+  display:grid;
+  place-items:center;
+}
+.due-row-icon .app-icon{width:15px;height:15px}
+.finance-detail-row.balance-due-row b,
+.finance-detail-row.category-detail-row b{white-space:nowrap}
+.mini-empty{padding:8px 0 2px}
+.credit-summary-card{
+  grid-template-columns:38px minmax(0,1fr);
+  align-items:start;
+}
+.credit-breakdown-list{
+  grid-column:1 / -1;
+  display:grid;
+  gap:7px;
+  padding-top:10px;
+  border-top:1px solid #edf1ef;
+}
+.credit-breakdown-list span{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  min-width:0;
+}
+.credit-breakdown-list small{overflow-wrap:anywhere}
+.credit-breakdown-list b{font-size:10px;white-space:nowrap}
+.payment-obligation-breakdown{
+  display:grid;
+  gap:10px;
+  margin:14px 0 0;
+  padding:13px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:#f8faf9;
+}
+.payment-total-row,
+.payment-obligation-list>div{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  min-width:0;
+}
+.payment-total-row small,
+.payment-obligation-list small{
+  color:var(--muted);
+  font-size:9px;
+}
+.payment-total-row strong{font-size:15px}
+.payment-obligation-list{
+  display:grid;
+  gap:8px;
+  padding-top:9px;
+  border-top:1px solid #e8efeb;
+}
+.payment-obligation-list span{display:grid;gap:2px;min-width:0}
+.payment-obligation-list strong{font-size:10px;overflow-wrap:anywhere}
+.payment-obligation-list b{font-size:10px;white-space:nowrap}
+.payment-obligation-breakdown p{margin:0;color:var(--muted);font-size:10px;line-height:1.45}
+
+@media(max-width:560px){
+  .balance-main-grid{grid-template-columns:1fr}
+  .balance-payee-v2{grid-template-columns:44px minmax(0,1fr)}
+  .balance-payee-v2 .payee-amount-block{
+    grid-column:2;
+    grid-template-columns:auto 12px;
+    justify-content:start;
+    justify-items:start;
+    min-width:0;
+    margin-top:-4px;
+  }
+  .payee-line{align-items:flex-start}
+  .due-status-badge{width:max-content;max-width:100%;white-space:normal;line-height:1.2;padding-top:5px;padding-bottom:5px}
+  .finance-detail-row.balance-due-row,
+  .finance-detail-row.category-detail-row{grid-template-columns:32px minmax(0,1fr)}
+  .finance-detail-row.balance-due-row b,
+  .finance-detail-row.category-detail-row b{grid-column:2;justify-self:start;margin-top:-2px}
+  .payment-profile-sheet{padding-left:16px;padding-right:16px}
+  .payment-total-row,
+  .payment-obligation-list>div{align-items:flex-start}
+}
