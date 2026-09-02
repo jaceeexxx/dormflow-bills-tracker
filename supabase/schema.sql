@@ -1394,11 +1394,9 @@ begin
       ) order by ac.amount_cents desc), '[]'::jsonb) as rows
       from authoritative_creditors ac
       left join detailed_creditors dc
-        on dc.member_id is not distinct from ac.member_id
-       and (ac.member_id is not null or lower(dc.display_name) = lower(ac.display_name))
+        on (dc.member_id = ac.member_id or (ac.member_id is null and lower(dc.display_name) = lower(ac.display_name)))
       left join reconciliation_rows rr
-        on rr.member_id is not distinct from ac.member_id
-       and (ac.member_id is not null or lower(rr.display_name) = lower(ac.display_name))
+        on (rr.member_id = ac.member_id or (ac.member_id is null and lower(rr.display_name) = lower(ac.display_name)))
     ),
     due_groups as (
       select jsonb_build_object(
