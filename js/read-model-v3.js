@@ -10,7 +10,11 @@ export function normalizeMemberHome(raw={}){
     dueSoon:Number(raw.due_soon_cents??raw.dueSoon??0),
     owedToMe:Number(raw.owed_to_me_cents??0),
     credit:Number(raw.credit_cents??0),
-    creditors:(raw.creditors||[]).map(x=>({memberId:x.member_id||null,name:x.label||'Household member',amount:Number(x.amount_cents||0)})),
+    creditors:(raw.creditors||[]).map(x=>{
+      const memberId=x.member_id||x.memberId||null;
+      const name=x.label||x.display_name||x.name||'Household member';
+      return {memberId,creditorLabel:memberId?null:(x.creditor_label||x.creditorLabel||x.label||null),name,amount:Number(x.amount_cents||x.amount||0)};
+    }),
     household:{total:Number(raw.household_total_cents||0),categories:Object.entries(cats).map(([name,amount])=>({name:normalizeCategory(name),amount:Number(amount||0)})).sort((a,b)=>b.amount-a.amount)},
     periodId:raw.period_id||null,
     periodMonth:raw.period_month||raw.periodMonth||null

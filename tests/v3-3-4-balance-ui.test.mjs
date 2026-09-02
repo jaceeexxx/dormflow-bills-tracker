@@ -5,11 +5,14 @@ import fs from 'node:fs';
 import {icon} from '../js/icons.js';
 import {
   classifyDueStatus,
+  loadMemberBalance,
   renderMemberBalance,
   summarizeCategories
 } from '../js/member-balance.js';
+import {supabase} from '../js/auth.js';
 import {
   applyBalanceDetailToMemberHome,
+  reconcileBalanceDetail,
   renderMemberHome
 } from '../js/member-home.js';
 
@@ -123,7 +126,7 @@ test('balance renderer understands object-shaped member balance detail RPC group
   assert.doesNotMatch(html, /No due within 5 days/);
 });
 
-test('member home payees use the same balance detail source as the payment sheet', () => {
+test('member home keeps the authoritative balance when detailed rows are incomplete', () => {
   const vm = applyBalanceDetailToMemberHome({
     memberId:'kd',
     name:'KD',
@@ -139,7 +142,15 @@ test('member home payees use the same balance detail source as the payment sheet
     credit_cents:0,
     owed_to_me_cents:0,
     creditors:[
-      {member_id:'aerian', display_name:'Aerian', amount_cents:14822, avatar_url:'aerian.jpg'}
+      {
+        member_id:'aerian',
+        display_name:'Aerian',
+        amount_cents:14822,
+        avatar_url:'aerian.jpg',
+        breakdown:[
+          {category:'Groceries', amount_cents:14822, due_date:'2026-09-05', status:'due_soon'}
+        ]
+      }
     ],
     due_groups:{
       overdue:[],
@@ -150,14 +161,132 @@ test('member home payees use the same balance detail source as the payment sheet
   });
 
   assert.equal(vm.name, 'KD');
-  assert.equal(vm.balance, 14822);
+  assert.equal(vm.balance, 16200);
   assert.equal(vm.dueSoon, 14822);
-  assert.deepEqual(vm.creditors.map(x=>[x.memberId,x.name,x.amount,x.avatarUrl]), [['aerian','Aerian',14822,'aerian.jpg']]);
+  assert.deepEqual(vm.creditors.map(x=>[x.memberId,x.name,x.amount,x.avatarUrl]), [['aerian','Aerian',16200,'aerian.jpg']]);
+  assert.equal(vm.creditors[0].breakdown.reduce((sum,item)=>sum+Number(item.amount_cents||0),0), 16200);
+  assert.equal(vm.creditors[0].breakdown.at(-1).amount_cents, 1378);
 
   const html = renderMemberHome({vm});
   assert.match(html, /Aerian/);
-  assert.match(html, /148\.22/);
-  assert.doesNotMatch(html, /162\.00/);
+  assert.match(html, /162\.00/);
+});
+
+test('balance and payment sheet loader reconcile incomplete detail to the authoritative RPC', async () => {
+  const originalRpc=supabase.rpc;
+  supabase.rpc=async name=>{
+    if(name==='member_balance_detail_v3')return {
+      member_id:'kd',
+      outstanding_cents:14822,
+      owed_to_me_cents:0,
+      credit_cents:0,
+      creditors:[{
+        member_id:'aerian',
+        display_name:'Aerian',
+        amount_cents:14822,
+        breakdown:[{category:'Groceries',amount_cents:14822,due_date:'2026-09-05',status:'due_soon'}]
+      }],
+      due_groups:{overdue:[],due_soon:[],later:[],no_due_date:[]},
+      category_breakdown:[{label:'Groceries',amount_cents:14822}]
+    };
+    if(name==='member_balance_v3')return {
+      member_id:'kd',
+      outstanding_cents:16200,
+      owed_to_me_cents:0,
+      credit_cents:0,
+      creditors:[{member_id:'aerian',label:'Aerian',amount_cents:16200}]
+    };
+    throw new Error(`Unexpected RPC: ${name}`);
+  };
+
+  try{
+    const balance=await loadMemberBalance();
+    assert.equal(balance.outstanding_cents,16200);
+    assert.equal(balance.creditors[0].amount_cents,16200);
+    assert.equal(balance.creditors[0].breakdown.reduce((sum,item)=>sum+Number(item.amount_cents||0),0),16200);
+    assert.equal(balance.due_groups.no_due_date.reduce((sum,item)=>sum+Number(item.outstanding_cents||0),0),1378);
+    assert.equal(balance.category_breakdown.find(item=>item.label==='Other open balance')?.amount_cents,1378);
+  }finally{
+    supabase.rpc=originalRpc;
+  }
+});
+
+test('balance loader never renders detail when the authoritative RPC is unavailable', async () => {
+  const originalRpc=supabase.rpc;
+  supabase.rpc=async name=>{
+    if(name==='member_balance_detail_v3')return {
+      member_id:'kd',
+      outstanding_cents:14822,
+      creditors:[{member_id:'aerian',display_name:'Aerian',amount_cents:14822}],
+      due_groups:{overdue:[],due_soon:[],later:[],no_due_date:[]}
+    };
+    if(name==='member_balance_v3')throw new Error('Authoritative balance unavailable');
+    throw new Error(`Unexpected RPC: ${name}`);
+  };
+
+  try{
+    await assert.rejects(loadMemberBalance(),/Authoritative balance unavailable/);
+  }finally{
+    supabase.rpc=originalRpc;
+  }
+});
+
+test('balance reconciliation is authoritative and idempotent for excess and unmatched detail', () => {
+  const summary={
+    outstanding_cents:16200,
+    owed_to_me_cents:0,
+    credit_cents:0,
+    creditors:[{member_id:'aerian',label:'Aerian Rose',amount_cents:16200}]
+  };
+  const detail={
+    outstanding_cents:19000,
+    creditors:[
+      {
+        member_id:'aerian',
+        display_name:'Aerian',
+        amount_cents:18000,
+        breakdown:[
+          {category:'Groceries',amount_cents:10000,due_date:'2026-09-05',status:'due_soon'},
+          {category:'PayLater / Loans',amount_cents:8000,due_date:'2026-09-15',status:'later'}
+        ]
+      },
+      {member_id:'jace',display_name:'Jace',amount_cents:1000,breakdown:[{category:'Rent',amount_cents:1000}]}
+    ],
+    due_groups:{overdue:[],due_soon:[],later:[],no_due_date:[]},
+    category_breakdown:[]
+  };
+
+  const first=reconcileBalanceDetail(summary,detail);
+  const second=reconcileBalanceDetail(summary,first);
+  assert.equal(first.creditors.length,1);
+  assert.equal(first.creditors[0].member_id,'aerian');
+  assert.equal(first.creditors[0].display_name,'Aerian Rose');
+  assert.equal(first.creditors[0].amount_cents,16200);
+  assert.equal(first.creditors[0].breakdown.reduce((sum,item)=>sum+item.amount_cents,0),16200);
+  assert.equal(first.due_groups.due_soon.reduce((sum,item)=>sum+item.outstanding_cents,0),10000);
+  assert.equal(first.due_groups.later.reduce((sum,item)=>sum+item.outstanding_cents,0),6200);
+  assert.deepEqual(second,first);
+});
+
+test('balance reconciliation uses an explicit label key for legacy null-id creditors', () => {
+  const result=reconcileBalanceDetail({
+    outstanding_cents:5000,
+    creditors:[{member_id:null,label:'Property manager',amount_cents:5000}]
+  },{
+    creditors:[{
+      member_id:null,
+      creditor_label:'Property manager',
+      display_name:'Household member',
+      amount_cents:5000,
+      breakdown:[{category:'Rent',amount_cents:5000,due_date:'2026-09-24',status:'later'}]
+    }],
+    due_groups:{},
+    category_breakdown:[]
+  });
+
+  assert.equal(result.creditors.length,1);
+  assert.equal(result.creditors[0].display_name,'Property manager');
+  assert.equal(result.creditors[0].breakdown[0].category,'Rent');
 });
 
 test('payment profile sheet source includes obligation breakdown next to the QR', () => {

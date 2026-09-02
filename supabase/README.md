@@ -35,3 +35,5 @@ The v3.3.3 migration repairs financial-write idempotency, same-household member 
 Run `migrate-v3.3.4.sql` **once** in Supabase SQL Editor. Do not rerun `schema.sql`, `seed-members.sql`, `migrate-history.sql`, `migrate-v3.2.sql`, `migrate-v3.3.sql`, `migrate-v3.3.1.sql`, `migrate-v3.3.2.sql`, or `migrate-v3.3.3.sql` on the existing project.
 
 The v3.3.4 migration adds the `member_balance_detail_v3()` read model for Home, Balance, QR payment breakdowns, credit breakdown, and due-status grouping. It is additive and does not modify settled financial data.
+
+If an earlier v3.3.4 draft was already applied, rerun the current `migrate-v3.3.4.sql` once. The migration only replaces the read function and reapplies its execute grant, so it cannot duplicate payments, obligations, expenses, or credits.

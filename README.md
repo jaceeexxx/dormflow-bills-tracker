@@ -16,6 +16,8 @@ Use this exact order:
 
 The v3.3.4 migration is additive. It adds `member_balance_detail_v3()` so Home, Balance, due schedule, credit breakdown, and payment QR sheets all read the same authoritative obligation detail. It does not modify settled financial data.
 
+If you already ran an earlier copy of v3.3.4, rerun the current `supabase/migrate-v3.3.4.sql` once. It is safe to rerun because it only uses `CREATE OR REPLACE FUNCTION` plus `GRANT`; it does not insert, update, delete, or duplicate financial rows.
+
 ## Balance and rent clarity
 
 - Admin can add Rent as its own first-class action.

@@ -2,6 +2,7 @@ import {supabase} from './auth.js';
 import {formatPeso,escapeHtml} from './read-model-v3.js';
 import {icon} from './icons.js';
 import {signedHouseholdMediaUrl} from './household-media.js';
+import {reconcileBalanceDetail} from './member-home.js';
 
 const DAY_MS=24*60*60*1000;
 const DUE_ORDER=['overdue','due_soon','later','no_due_date'];
@@ -68,8 +69,13 @@ async function enrichCreditorAvatars(creditors=[]){
 
 export async function loadMemberBalance(){
   try{
-    const detail0=await supabase.rpc('member_balance_detail_v3',{});
-    const detail=Array.isArray(detail0)?detail0[0]:detail0;
+    const [detail0,summary0]=await Promise.all([
+      supabase.rpc('member_balance_detail_v3',{}),
+      supabase.rpc('member_balance_v3')
+    ]);
+    const rawDetail=Array.isArray(detail0)?detail0[0]:detail0;
+    const summary=Array.isArray(summary0)?summary0[0]:summary0;
+    const detail=reconcileBalanceDetail(summary||{},rawDetail);
     if(detail?.member_id||detail?.creditors||detail?.due_groups){
       return {...detail,creditors:await enrichCreditorAvatars(detail.creditors||[])};
     }

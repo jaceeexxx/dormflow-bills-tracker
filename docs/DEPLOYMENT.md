@@ -9,8 +9,10 @@
 5. Run `npm test` and `npm run check`.
 6. Deploy with `vercel deploy --prod` or Git push.
 7. Verify the production `/api/health` still reports Supabase/push/cron configured.
-8. Fully close and reopen the installed iPhone PWA once for the `dormflow-v3-3-4` service-worker cache.
+8. Fully close and reopen the installed iPhone PWA once for the `dormflow-v3-3-4-shell-2` service-worker cache.
 9. In Notifications, tap **Enable push / Repair**, then **Send 5-second test** and immediately background the app. Confirm an iPhone system notification arrives.
+
+If an earlier v3.3.4 draft was already applied, rerun the current migration once. It only replaces the read RPC and reapplies its grant; it does not write financial rows.
 
 ## Client vs server configuration
 

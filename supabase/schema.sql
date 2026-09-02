@@ -1235,10 +1235,13 @@ as $$
 declare
   v_member uuid := public.current_member_id_v3();
   v_household uuid := public.current_household_id_v3();
+  v_authoritative_balance jsonb;
 begin
   if v_member is null or v_household is null then
     raise exception 'authentication required' using errcode = '42501';
   end if;
+
+  v_authoritative_balance := public.member_balance_v3();
 
   return (
     with scoped_obligations as (
@@ -1275,11 +1278,10 @@ begin
       where ob.household_id = v_household
         and ob.outstanding_cents > 0
         and bp.month <= (
-          select bp_active.month
+          select max(bp_active.month)
           from public.billing_periods bp_active
           where bp_active.household_id = v_household
             and bp_active.status = 'active'
-          limit 1
         )
     ),
     totals as (
@@ -1294,6 +1296,13 @@ begin
       where c.owner_member_id = v_member
         and c.household_id = v_household
         and c.status = 'active'
+    ),
+    authoritative_totals as (
+      select
+        coalesce((v_authoritative_balance->>'outstanding_cents')::bigint, totals.outstanding_cents) as outstanding_cents,
+        coalesce((v_authoritative_balance->>'owed_to_me_cents')::bigint, totals.owed_to_me_cents) as owed_to_me_cents,
+        coalesce((v_authoritative_balance->>'credit_cents')::bigint, credit_total.credit_cents) as credit_cents
+      from totals, credit_total
     ),
     credit_breakdown as (
       select coalesce(jsonb_agg(jsonb_build_object(
@@ -1315,42 +1324,101 @@ begin
         and c.status = 'active'
         and c.remaining_amount_cents > 0
     ),
+    detailed_creditors as (
+      select
+        so.creditor_member_id as member_id,
+        so.display_name,
+        so.avatar_path,
+        sum(so.outstanding_cents)::bigint as amount_cents,
+        min(so.due_date) as oldest_due_date,
+        case
+          when bool_or(so.due_status = 'overdue') then 'overdue'
+          when bool_or(so.due_status = 'due_soon') then 'due_soon'
+          when bool_or(so.due_status = 'later') then 'later'
+          else 'no_due_date'
+        end as due_status,
+        jsonb_agg(jsonb_build_object(
+          'obligation_id', so.id,
+          'category', so.source_category,
+          'label', so.label,
+          'source_type', so.source_type,
+          'amount_cents', so.outstanding_cents,
+          'due_date', so.due_date,
+          'status', so.due_status
+        ) order by so.due_date nulls last, so.source_category, so.outstanding_cents desc) as breakdown
+      from scoped_obligations so
+      where so.debtor_member_id = v_member
+      group by so.creditor_member_id, so.display_name, so.avatar_path
+    ),
+    authoritative_creditors as (
+      select
+        (entry->>'member_id')::uuid as member_id,
+        coalesce(entry->>'label', 'Household member') as display_name,
+        coalesce((entry->>'amount_cents')::bigint, 0)::bigint as amount_cents
+      from jsonb_array_elements(coalesce(v_authoritative_balance->'creditors', '[]'::jsonb)) entry
+      where coalesce((entry->>'amount_cents')::bigint, 0) > 0
+    ),
+    reconciliation_rows as (
+      select
+        ac.member_id,
+        ac.display_name,
+        dc.avatar_path,
+        (ac.amount_cents - coalesce(dc.amount_cents, 0))::bigint as amount_cents
+      from authoritative_creditors ac
+      left join detailed_creditors dc
+        on dc.member_id is not distinct from ac.member_id
+       and (ac.member_id is not null or lower(dc.display_name) = lower(ac.display_name))
+      where ac.amount_cents > coalesce(dc.amount_cents, 0)
+    ),
     creditors as (
-      select coalesce(jsonb_agg(creditor_row.payload order by (creditor_row.payload->>'amount_cents')::bigint desc), '[]'::jsonb) as rows
-      from (
-        select jsonb_build_object(
-          'member_id', so.creditor_member_id,
-          'display_name', so.display_name,
-          'avatar_path', so.avatar_path,
-          'amount_cents', sum(so.outstanding_cents)::bigint,
-          'oldest_due_date', min(so.due_date),
-          'due_status', case
-            when bool_or(so.due_status = 'overdue') then 'overdue'
-            when bool_or(so.due_status = 'due_soon') then 'due_soon'
-            when bool_or(so.due_status = 'later') then 'later'
-            else 'no_due_date'
-          end,
-          'breakdown', jsonb_agg(jsonb_build_object(
-            'obligation_id', so.id,
-            'category', so.source_category,
-            'label', so.label,
-            'source_type', so.source_type,
-            'amount_cents', so.outstanding_cents,
-            'due_date', so.due_date,
-            'status', so.due_status
-          ) order by so.due_date nulls last, so.source_category, so.outstanding_cents desc)
-        ) as payload
-        from scoped_obligations so
-        where so.debtor_member_id = v_member
-        group by so.creditor_member_id, so.display_name, so.avatar_path
-      ) creditor_row
+      select coalesce(jsonb_agg(jsonb_build_object(
+        'member_id', ac.member_id,
+        'creditor_label', case when ac.member_id is null then ac.display_name else null end,
+        'display_name', ac.display_name,
+        'avatar_path', dc.avatar_path,
+        'amount_cents', ac.amount_cents,
+        'oldest_due_date', dc.oldest_due_date,
+        'due_status', coalesce(dc.due_status, 'no_due_date'),
+        'breakdown', coalesce(dc.breakdown, '[]'::jsonb) || case
+          when rr.amount_cents > 0 then jsonb_build_array(jsonb_build_object(
+            'obligation_id', null,
+            'category', 'Other open balance',
+            'label', 'Balance detail pending refresh',
+            'source_type', 'balance_reconciliation',
+            'amount_cents', rr.amount_cents,
+            'due_date', null,
+            'status', 'no_due_date'
+          ))
+          else '[]'::jsonb
+        end
+      ) order by ac.amount_cents desc), '[]'::jsonb) as rows
+      from authoritative_creditors ac
+      left join detailed_creditors dc
+        on dc.member_id is not distinct from ac.member_id
+       and (ac.member_id is not null or lower(dc.display_name) = lower(ac.display_name))
+      left join reconciliation_rows rr
+        on rr.member_id is not distinct from ac.member_id
+       and (ac.member_id is not null or lower(rr.display_name) = lower(ac.display_name))
     ),
     due_groups as (
       select jsonb_build_object(
         'overdue', coalesce((select jsonb_agg(to_jsonb(so) order by so.due_date nulls last, so.source_category, so.outstanding_cents desc) from scoped_obligations so where so.debtor_member_id = v_member and so.due_status = 'overdue'), '[]'::jsonb),
         'due_soon', coalesce((select jsonb_agg(to_jsonb(so) order by so.due_date nulls last, so.source_category, so.outstanding_cents desc) from scoped_obligations so where so.debtor_member_id = v_member and so.due_status = 'due_soon'), '[]'::jsonb),
         'later', coalesce((select jsonb_agg(to_jsonb(so) order by so.due_date nulls last, so.source_category, so.outstanding_cents desc) from scoped_obligations so where so.debtor_member_id = v_member and so.due_status = 'later'), '[]'::jsonb),
-        'no_due_date', coalesce((select jsonb_agg(to_jsonb(so) order by so.source_category, so.outstanding_cents desc) from scoped_obligations so where so.debtor_member_id = v_member and so.due_status = 'no_due_date'), '[]'::jsonb)
+        'no_due_date',
+          coalesce((select jsonb_agg(to_jsonb(so) order by so.source_category, so.outstanding_cents desc) from scoped_obligations so where so.debtor_member_id = v_member and so.due_status = 'no_due_date'), '[]'::jsonb)
+          || coalesce((select jsonb_agg(jsonb_build_object(
+            'id', null,
+            'debtor_member_id', v_member,
+            'creditor_member_id', rr.member_id,
+            'display_name', rr.display_name,
+            'due_date', null,
+            'source_category', 'Other open balance',
+            'outstanding_cents', rr.amount_cents,
+            'label', 'Balance detail pending refresh',
+            'source_type', 'balance_reconciliation',
+            'due_status', 'no_due_date'
+          ) order by rr.amount_cents desc) from reconciliation_rows rr), '[]'::jsonb)
       ) as payload
     ),
     category_breakdown as (
@@ -1361,26 +1429,40 @@ begin
       ) order by category_row.amount_cents desc), '[]'::jsonb) as rows
       from (
         select
-          so.source_category,
-          sum(so.outstanding_cents)::bigint as amount_cents,
-          count(*)::int as item_count
-        from scoped_obligations so
-        where so.debtor_member_id = v_member
-        group by so.source_category
+          category_parts.source_category,
+          sum(category_parts.amount_cents)::bigint as amount_cents,
+          sum(category_parts.item_count)::int as item_count
+        from (
+          select
+            so.source_category,
+            sum(so.outstanding_cents)::bigint as amount_cents,
+            count(*)::int as item_count
+          from scoped_obligations so
+          where so.debtor_member_id = v_member
+          group by so.source_category
+          union all
+          select
+            'Other open balance'::text,
+            sum(rr.amount_cents)::bigint,
+            count(*)::int
+          from reconciliation_rows rr
+          having sum(rr.amount_cents) > 0
+        ) category_parts
+        group by category_parts.source_category
       ) category_row
     )
     select jsonb_build_object(
       'member_id', v_member,
-      'outstanding_cents', totals.outstanding_cents,
-      'owed_to_me_cents', totals.owed_to_me_cents,
-      'credit_cents', credit_total.credit_cents,
-      'net_position_cents', totals.outstanding_cents - totals.owed_to_me_cents - credit_total.credit_cents,
+      'outstanding_cents', authoritative_totals.outstanding_cents,
+      'owed_to_me_cents', authoritative_totals.owed_to_me_cents,
+      'credit_cents', authoritative_totals.credit_cents,
+      'net_position_cents', authoritative_totals.outstanding_cents - authoritative_totals.owed_to_me_cents - authoritative_totals.credit_cents,
       'credit_breakdown', credit_breakdown.rows,
       'creditors', creditors.rows,
       'due_groups', due_groups.payload,
       'category_breakdown', category_breakdown.rows
     )
-    from totals, credit_total, credit_breakdown, creditors, due_groups, category_breakdown
+    from authoritative_totals, credit_breakdown, creditors, due_groups, category_breakdown
   );
 end;
 $$;

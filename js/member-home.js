@@ -33,8 +33,46 @@ function categoryIcon(label=''){return label.includes('Housing')?'utilities':lab
 function householdMix(categories=[],total=0){let cursor=0;const colors=['#0f6b57','#f39a3d','#294c7a','#b7a164'];const stops=[];categories.slice(0,4).forEach((c,i)=>{const pct=total?c.amount/total*100:0;stops.push(`${colors[i]} ${cursor}% ${cursor+pct}%`);cursor+=pct;});if(cursor<100)stops.push(`#e8eeeb ${cursor}% 100%`);return `conic-gradient(${stops.join(',')})`;}
 function activityMeta(row){const method=String(row?.method||'').trim();const date=new Date(row.date).toLocaleDateString('en-PH',{month:'short',day:'numeric'});return method&&method.toLowerCase()!=='payment'?`${escapeHtml(method)} · ${date}`:date;}
 const detailCents=item=>Number(item?.amount_cents??item?.outstanding_cents??item?.amount??0);
+const detailMemberId=item=>String(item?.member_id||item?.memberId||'');
+const detailName=item=>String(item?.display_name||item?.name||item?.label||'Household member');
+const detailLabel=item=>String(item?.creditor_label||item?.creditorLabel||item?.label||'').trim();
+function creditorKey(item={}){const id=detailMemberId(item).trim();if(id)return `id:${id}`;const label=detailLabel(item);return label?`label:${label.toLowerCase()}`:'';}
+function reconcileCreditorBreakdown(creditor,expectedAmount){
+  const detailAmount=detailCents(creditor);
+  const source=(creditor?.breakdown||[]).filter(item=>item.source_type!=='balance_reconciliation');
+  const breakdown=source.map(item=>({...item,amount_cents:detailCents(item)})).filter(item=>item.amount_cents>0);
+  if(!breakdown.length&&detailAmount>0)breakdown.push({category:'Open balance',label:'Open balance',source_type:'balance',amount_cents:detailAmount,due_date:null,status:'no_due_date'});
+  let remaining=Math.max(0,expectedAmount);const reconciled=[];
+  for(const item of breakdown){const amount=Math.min(item.amount_cents,remaining);if(amount>0)reconciled.push({...item,amount_cents:amount});remaining-=amount;if(remaining<=0)break;}
+  if(remaining>0)reconciled.push({category:'Other open balance',label:'Balance detail pending refresh',source_type:'balance_reconciliation',amount_cents:remaining,due_date:null,status:'no_due_date'});
+  return reconciled;
+}
+function rebuildDerivedBalanceRows(creditors=[]){
+  const due_groups={overdue:[],due_soon:[],later:[],no_due_date:[]},categories=new Map();
+  for(const creditor of creditors){
+    for(const item of creditor.breakdown||[]){
+      const amount=detailCents(item),status=['overdue','due_soon','later','no_due_date'].includes(item.status||item.due_status)?(item.status||item.due_status):'no_due_date';
+      const row={...item,amount_cents:amount,outstanding_cents:amount,creditor_member_id:creditor.member_id||null,display_name:creditor.display_name||'Household member',due_status:status};
+      due_groups[status].push(row);
+      const category=String(item.category||item.source_category||'Other open balance');
+      const current=categories.get(category)||{label:category,amount_cents:0,item_count:0};current.amount_cents+=amount;current.item_count+=1;categories.set(category,current);
+    }
+  }
+  return {due_groups,category_breakdown:[...categories.values()].sort((a,b)=>b.amount_cents-a.amount_cents)};
+}
+export function reconcileBalanceDetail(summary={},detail=null){
+  if(!detail||!Array.isArray(detail.creditors)||!Array.isArray(summary.creditors))return detail;
+  const detailByKey=new Map();for(const creditor of detail.creditors){const key=creditorKey(creditor);if(key&&!detailByKey.has(key))detailByKey.set(key,creditor);}
+  const creditors=summary.creditors.filter(creditor=>detailCents(creditor)>0).map(creditor=>{
+    const match=detailByKey.get(creditorKey(creditor))||{},amount=detailCents(creditor),memberId=detailMemberId(creditor)||detailMemberId(match)||null,label=detailLabel(creditor)||detailLabel(match)||null;
+    return {...match,member_id:memberId,creditor_label:label,display_name:detailName(creditor),amount_cents:amount,breakdown:reconcileCreditorBreakdown(match,amount)};
+  });
+  const derived=rebuildDerivedBalanceRows(creditors);
+  const outstanding=Number(summary.outstanding_cents??summary.balance??detail.outstanding_cents??0),owedToMe=Number(summary.owed_to_me_cents??summary.owedToMe??detail.owed_to_me_cents??0),credit=Number(summary.credit_cents??summary.credit??detail.credit_cents??0);
+  return {...detail,outstanding_cents:outstanding,owed_to_me_cents:owedToMe,credit_cents:credit,net_position_cents:outstanding-owedToMe-credit,creditors,...derived};
+}
 function detailDueSoonCents(detail={}){const groups=detail.due_groups||detail.dueGroups;if(!groups)return null;const items=Array.isArray(groups)?(groups.find(group=>group.key==='due_soon')?.items||[]):(groups.due_soon||[]);return items.reduce((sum,item)=>sum+detailCents(item),0);}
-export function applyBalanceDetailToMemberHome(vm={},detail=null){if(!detail||!Array.isArray(detail.creditors))return vm;const dueSoon=detailDueSoonCents(detail);return {...vm,balance:Number(detail.outstanding_cents??vm.balance??0),credit:Number(detail.credit_cents??vm.credit??0),owedToMe:Number(detail.owed_to_me_cents??vm.owedToMe??0),dueSoon:dueSoon===null?Number(vm.dueSoon||0):dueSoon,creditors:detail.creditors.map(x=>({memberId:x.member_id||x.memberId||null,name:x.display_name||x.name||x.label||'Household member',amount:detailCents(x),avatarUrl:x.avatar_url||x.avatarUrl||'',avatarPath:x.avatar_path||x.avatarPath||'',breakdown:x.breakdown||[]})).filter(x=>x.amount>0)};}
+export function applyBalanceDetailToMemberHome(vm={},detail=null){const reconciled=reconcileBalanceDetail(vm,detail);if(!reconciled||!Array.isArray(reconciled.creditors))return vm;const dueSoon=detailDueSoonCents(reconciled);return {...vm,balance:Number(reconciled.outstanding_cents??vm.balance??0),credit:Number(reconciled.credit_cents??vm.credit??0),owedToMe:Number(reconciled.owed_to_me_cents??vm.owedToMe??0),dueSoon:dueSoon===null?Number(vm.dueSoon||0):dueSoon,creditors:reconciled.creditors.map(x=>({memberId:x.member_id||x.memberId||null,name:x.display_name||x.name||x.label||'Household member',amount:detailCents(x),avatarUrl:x.avatar_url||x.avatarUrl||'',avatarPath:x.avatar_path||x.avatarPath||'',breakdown:x.breakdown||[]})).filter(x=>x.amount>0)};}
 
 export function renderMemberHome({vm,offline=false,lastSyncedAt}={}){
   const creditors=vm.creditors?.length?vm.creditors.map(x=>`<button class="payee-card" type="button" data-payment-profile="${x.memberId||x.member_id||''}"><div class="payee-avatar ${x.avatarUrl?'has-photo':''}">${x.avatarUrl?`<img src="${escapeHtml(x.avatarUrl)}" alt="${escapeHtml(x.name)} profile photo">`:escapeHtml(x.name.slice(0,1).toUpperCase())}</div><div><strong>${escapeHtml(x.name)}</strong><small>Outstanding</small></div><b>${formatPeso(x.amount)}</b><span>›</span></button>`).join(''):`<div class="empty-state-bank compact"><strong>You're settled</strong><span>No outstanding transfers right now.</span></div>`;

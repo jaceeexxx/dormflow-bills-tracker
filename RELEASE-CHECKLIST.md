@@ -18,6 +18,6 @@
 - [ ] Push diagnostics require browser + server + current VAPID before showing Active.
 - [ ] Installed iPhone PWA: tap **Send 5-second test**, background app, and receive a real system push notification.
 - [ ] Expired 404/410 subscriptions are marked inactive.
-- [ ] Service-worker cache is v3.3.4 and release-critical navigation/CSS/JS force a network reload.
+- [ ] Service-worker cache is `dormflow-v3-3-4-shell-2` and release-critical navigation/CSS/JS force a network reload.
 - [ ] No secret/service-role JWT, `sb_secret_`, VAPID private key, or `CRON_SECRET` value is committed.
 - [ ] Full ZIP passes integrity and overlay verification.

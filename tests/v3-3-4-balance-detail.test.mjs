@@ -64,3 +64,18 @@ test('balance detail prefers linked expense category and due date for expense ba
     assert.match(fn,/coalesce\(e\.category,\s*ob\.source_category,\s*'Expense'\)\s+as source_category/i);
   }
 });
+
+test('balance detail reconciles authoritative residuals without exposing future periods',()=>{
+  for(const file of ['supabase/migrate-v3.3.4.sql','supabase/schema.sql']){
+    const fn=latestFunctionBlock(read(file),'member_balance_detail_v3');
+    assert.match(fn,/v_authoritative_balance\s*:=\s*public\.member_balance_v3\(\)/i);
+    assert.match(fn,/bp\.month\s*<=\s*\([\s\S]*status\s*=\s*'active'/i);
+    assert.doesNotMatch(fn,/all_total_cents|use_all_obligations/i);
+    assert.match(fn,/authoritative_creditors/i);
+    assert.match(fn,/'creditor_label',\s*case when ac\.member_id is null then ac\.display_name else null end/i);
+    assert.match(fn,/reconciliation_rows/i);
+    assert.match(fn,/balance_reconciliation/i);
+    assert.match(fn,/'Other open balance'/i);
+    assert.match(fn,/'outstanding_cents',\s*authoritative_totals\.outstanding_cents/i);
+  }
+});
