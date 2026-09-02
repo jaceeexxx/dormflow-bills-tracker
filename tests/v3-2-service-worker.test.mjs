@@ -4,7 +4,7 @@ import fs from 'node:fs';
 const sw=fs.readFileSync('service-worker.js','utf8');
 
 test('current v3 service worker versions cache and removes older caches',()=>{
-  assert.match(sw,/dormflow-v3-3-4-shell-2/i);
+  assert.match(sw,/dormflow-v3-3-5-shell-1/i);
   assert.match(sw,/caches\.keys\(\)/);
   assert.match(sw,/caches\.delete/);
 });

@@ -4,27 +4,27 @@ import fs from 'node:fs';
 
 const read=p=>fs.readFileSync(p,'utf8');
 
-test('release metadata is v3.3.4 and service-worker cache is bumped',()=>{
+test('release metadata is v3.3.5 and service-worker cache is bumped',()=>{
   const pkg=JSON.parse(read('package.json'));
-  assert.equal(pkg.version,'3.3.4');
-  assert.match(read('service-worker.js'),/dormflow-v3-3-4/);
+  assert.equal(pkg.version,'3.3.5');
+  assert.match(read('service-worker.js'),/dormflow-v3-3-5/);
 });
 
-test('project/release checks require v3.3.4 migration and push test endpoint',()=>{
+test('project/release checks require v3.3.5 migration and push test endpoint',()=>{
   const check=read('scripts/check-project.mjs');
   const pack=read('scripts/package-release.mjs');
   assert.match(check,/api\/push-test\.js/);
-  assert.match(check,/migrate-v3\.3\.4\.sql/);
-  assert.match(check,/package\.json must be v3\.3\.4/);
-  assert.match(pack,/DormFlow_v3_3_4_Balance_Rent_Clarity_PWA_20_St_Paul\.zip/);
-  assert.match(pack,/migrate-v3\.3\.4\.sql/);
+  assert.match(check,/migrate-v3\.3\.5\.sql/);
+  assert.match(check,/package\.json must be v3\.3\.5/);
+  assert.match(pack,/DormFlow_v3_3_5_Exact_Payment_Receipts_PWA_20_St_Paul\.zip/);
+  assert.match(pack,/migrate-v3\.3\.5\.sql/);
 });
 
-test('deployment docs describe one-time v3.3.3 to v3.3.4 upgrade and real iPhone push test',()=>{
+test('deployment docs describe one-time v3.3.4 to v3.3.5 upgrade and real iPhone push test',()=>{
   for(const file of ['README.md','docs/DEPLOYMENT.md','supabase/README.md','RELEASE-CHECKLIST.md']){
     const src=read(file);
-    assert.match(src,/v3\.3\.4/i,`${file} must mention v3.3.4`);
-    assert.match(src,/migrate-v3\.3\.4\.sql/i,`${file} must name migration`);
+    assert.match(src,/v3\.3\.5/i,`${file} must mention v3.3.5`);
+    assert.match(src,/migrate-v3\.3\.5\.sql/i,`${file} must name migration`);
   }
   const readme=read('README.md');
   assert.match(readme,/Send 5-second test/i);

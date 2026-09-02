@@ -868,3 +868,185 @@ html,body{
   .payment-total-row,
   .payment-obligation-list>div{align-items:flex-start}
 }
+
+/* DormFlow v3.3.5 - exact payment item selection and receipt review */
+.payment-target-picker{
+  display:grid;
+  gap:10px;
+  padding:13px;
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:#f8faf8;
+}
+.payment-target-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  min-width:0;
+}
+.payment-target-head span{
+  min-width:0;
+  color:var(--muted);
+  font-size:9px;
+  line-height:1.35;
+}
+.payment-target-head strong{
+  color:var(--ink);
+  font-size:11px;
+  line-height:1.2;
+  white-space:nowrap;
+}
+.payment-target-option{
+  display:grid;
+  grid-template-columns:22px minmax(0,1fr) 104px;
+  gap:10px;
+  align-items:center;
+  min-width:0;
+  padding:10px 0;
+  border-top:1px solid #e8eeeb;
+}
+.payment-target-option:first-of-type{border-top:0}
+.payment-target-option>input[type="checkbox"]{
+  width:18px;
+  height:18px;
+  margin:0;
+  accent-color:var(--brand);
+}
+.payment-target-option>span{
+  display:grid;
+  gap:3px;
+  min-width:0;
+}
+.payment-target-option strong{
+  color:var(--ink);
+  font-size:11px;
+  line-height:1.25;
+  overflow-wrap:anywhere;
+}
+.payment-target-option small{
+  color:var(--muted);
+  font-size:9px;
+  line-height:1.35;
+  overflow-wrap:anywhere;
+}
+.payment-target-option [data-payment-target-amount]{
+  width:100%;
+  min-width:0;
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:9px 8px;
+  background:#fff;
+  color:var(--ink);
+  font-weight:750;
+  text-align:right;
+}
+.review-allocation-row{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 110px;
+  gap:10px;
+  align-items:center;
+}
+.review-allocation-row>span{
+  display:grid;
+  gap:3px;
+  min-width:0;
+}
+.allocation-title{
+  color:var(--ink);
+  font-size:11px;
+  line-height:1.25;
+  overflow-wrap:anywhere;
+}
+.review-allocation-row small{
+  color:var(--muted);
+  font-size:9px;
+  line-height:1.35;
+}
+.review-allocation-row input{text-align:right}
+.claim-receipt-panel,
+.claim-receipt-details{
+  display:grid;
+  gap:10px;
+  padding:13px;
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:#f8faf8;
+}
+.claim-receipt-panel .text-action{justify-self:start}
+.receipt-preview-card{
+  display:grid;
+  gap:8px;
+  justify-items:center;
+  min-width:0;
+  padding:12px;
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:#fff;
+}
+.receipt-preview-card img{
+  display:block;
+  width:100%;
+  max-height:360px;
+  object-fit:contain;
+  border-radius:12px;
+}
+.receipt-preview-card span,
+.receipt-preview-card strong,
+.receipt-empty{
+  color:var(--muted);
+  font-size:10px;
+  line-height:1.4;
+}
+.pdf-receipt{
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;
+  justify-items:start;
+}
+.pdf-receipt span{
+  min-width:0;
+  overflow-wrap:anywhere;
+}
+.pdf-receipt a{
+  color:var(--brand);
+  font-size:11px;
+  font-weight:800;
+}
+.receipt-empty{
+  padding:12px;
+  border:1px dashed #d2dcd7;
+  border-radius:14px;
+  background:#fff;
+  text-align:center;
+}
+.receipt-detail-sheet .payment-obligation-list{
+  max-height:none;
+  overflow:visible;
+}
+.claim-receipt-details .payment-obligation-list>div{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:start;
+}
+
+@media(max-width:560px){
+  .payment-target-option{
+    grid-template-columns:22px minmax(0,1fr);
+    align-items:start;
+  }
+  .payment-target-option [data-payment-target-amount]{
+    grid-column:2;
+    max-width:180px;
+  }
+  .review-allocation-row{
+    grid-template-columns:1fr;
+    gap:7px;
+  }
+  .review-allocation-row input{
+    justify-self:start;
+    max-width:180px;
+  }
+  .pdf-receipt{
+    grid-template-columns:1fr;
+  }
+}

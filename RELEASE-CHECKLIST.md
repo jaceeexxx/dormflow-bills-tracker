@@ -1,15 +1,19 @@
-# DormFlow v3.3.4 Release Checklist
+# DormFlow v3.3.5 Release Checklist
 
 - [ ] `npm test` passes with zero failures.
-- [ ] `npm run check` passes and package version is v3.3.4.
-- [ ] Existing v3.3.3 project runs **only** `supabase/migrate-v3.3.4.sql` once.
-- [ ] Do not rerun earlier schema/seed/history or v3.2/v3.3/v3.3.1/v3.3.2/v3.3.3 migrations on the existing database.
+- [ ] `npm run check` passes and package version is v3.3.5.
+- [ ] Existing v3.3.4 project runs **only** `supabase/migrate-v3.3.5.sql` once.
+- [ ] Do not rerun earlier schema/seed/history or v3.2/v3.3/v3.3.1/v3.3.2/v3.3.3/v3.3.4 migrations on the existing database.
 - [ ] August verification remains PHP 23,944.22 / PHP 22,062.29 / PHP 1,881.93.
 - [ ] September current balance excludes October/November draft PayLater installments while prior unpaid balances still carry forward.
 - [ ] Legacy September PayLater matches Sep 5 Aerian PHP 592, Sep 5 Jace PHP 4,660, Sep 15 Aexy PHP 280, Sep 15 KD PHP 428, Sep 16 Jace TikTok PHP 360.
 - [ ] Borrower has no self-obligation; only the other three roommate shares are reimbursement obligations.
 - [ ] Admin Add/Save works for Utility, Grocery, Other Expense, Rent, Announcement, and PayLater; successful Save closes and failed Save preserves inputs.
 - [ ] Home "Pay these people", Balance, and payment QR sheets agree on totals and owed breakdown rows.
+- [ ] Report Payment allows exact dated balance rows and partial payment amounts to be selected.
+- [ ] Admin Review shows the selected rows and approves against the same obligations.
+- [ ] Payee gets the receipt/details notification only after admin approval.
+- [ ] Approved payment claim receipt/details can be opened by payer, payee, and admin.
 - [ ] Due schedule groups Overdue, Due within 5 days, Later this month, and No due date.
 - [ ] Credit balance has a visible breakdown by creditor/payment instead of only a total.
 - [ ] KD profile/name changes preserve the same household member id and do not duplicate Kean/KD balances.
@@ -18,6 +22,6 @@
 - [ ] Push diagnostics require browser + server + current VAPID before showing Active.
 - [ ] Installed iPhone PWA: tap **Send 5-second test**, background app, and receive a real system push notification.
 - [ ] Expired 404/410 subscriptions are marked inactive.
-- [ ] Service-worker cache is `dormflow-v3-3-4-shell-2` and release-critical navigation/CSS/JS force a network reload.
+- [ ] Service-worker cache is `dormflow-v3-3-5-shell-1` and release-critical navigation/CSS/JS force a network reload.
 - [ ] No secret/service-role JWT, `sb_secret_`, VAPID private key, or `CRON_SECRET` value is committed.
 - [ ] Full ZIP passes integrity and overlay verification.

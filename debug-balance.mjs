@@ -1,8 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
 import fs from 'fs';
 
-const supabase_url = process.env.VITE_SUPABASE_URL || 'http://localhost:54321';
-const supabase_key = process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNkaWJiZmpmcmhyanBhYnp2a2d6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE2OTA2NzMyMDAsImV4cCI6MTk4NjI3MzIwMH0.7fDWHVfVAH3mVXWr_8w_VUfqEeVFf7xXrWz_50M_z9E';
+const supabase_url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+const supabase_key = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY;
+
+if (!supabase_url || !supabase_key) {
+  throw new Error('Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY before running debug-balance.mjs.');
+}
 
 const client = createClient(supabase_url, supabase_key, {
   auth: { persistSession: false },

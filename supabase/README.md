@@ -37,3 +37,11 @@ Run `migrate-v3.3.4.sql` **once** in Supabase SQL Editor. Do not rerun `schema.s
 The v3.3.4 migration adds the `member_balance_detail_v3()` read model for Home, Balance, QR payment breakdowns, credit breakdown, and due-status grouping. It is additive and does not modify settled financial data.
 
 If an earlier v3.3.4 draft was already applied, rerun the current `migrate-v3.3.4.sql` once. The migration only replaces the read function and reapplies its execute grant, so it cannot duplicate payments, obligations, expenses, or credits.
+
+## Existing v3.3.4 household -> v3.3.5
+
+Run `migrate-v3.3.5.sql` **once** in Supabase SQL Editor. Do not rerun `schema.sql`, `seed-members.sql`, `migrate-history.sql`, `migrate-v3.2.sql`, `migrate-v3.3.sql`, `migrate-v3.3.1.sql`, `migrate-v3.3.2.sql`, `migrate-v3.3.3.sql`, or `migrate-v3.3.4.sql` on the existing project.
+
+The v3.3.5 migration adds `payment_target_options_v3()`, exact Report Payment allocations, approved claim receipt visibility for payer/payee/admin, and the post-approval `payment_received` notification. It is additive and does not modify settled financial data.
+
+If an earlier v3.3.5 draft was already applied, rerun the current `migrate-v3.3.5.sql` once. The migration only replaces functions, policies, and grants, so it cannot duplicate payments, obligations, expenses, or credits.

@@ -5,7 +5,7 @@ import {icon} from './icons.js';
 export function defaultNotificationPreferences(){return {payment_updates:true,due_reminders:true,announcements:true,expense_updates:true,month_balance_updates:true};}
 
 export function pushPreferenceForType(type=''){
-  if(['payment_claim','payment_verified','payment_rejected','payment_recorded'].includes(type))return 'payment_updates';
+  if(['payment_claim','payment_verified','payment_rejected','payment_recorded','payment_received'].includes(type))return 'payment_updates';
   if(['due_in_3_days','due_tomorrow','due_today','overdue'].includes(type))return 'due_reminders';
   if(type==='announcement')return 'announcements';
   if(['expense_added','utility_added','paylater_added','paylater_updated','paylater_archived'].includes(type))return 'expense_updates';
@@ -30,7 +30,7 @@ export async function markRead(id){return supabase.update('notifications',`id=eq
 
 export function notificationRoute(note={},identity={}){
   const type=note.type||'';
-  if(['payment_claim','payment_verified','payment_rejected','payment_recorded'].includes(type))return identity.role==='admin'&&type==='payment_claim'?'review':'payments';
+  if(['payment_claim','payment_verified','payment_rejected','payment_recorded','payment_received'].includes(type))return identity.role==='admin'&&type==='payment_claim'?'review':'payments';
   if(type==='utility_added')return 'utilities';
   if(type==='expense_added')return 'expenses';
   if(['paylater_added','paylater_updated','paylater_archived'].includes(type))return 'paylater';

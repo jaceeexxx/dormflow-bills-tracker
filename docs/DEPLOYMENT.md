@@ -1,18 +1,18 @@
-# DormFlow v3.3.4 deployment
+# DormFlow v3.3.5 deployment
 
-## Existing v3.3.3 project
+## Existing v3.3.4 project
 
-1. Overlay the v3.3.4 patch over the current application files.
-2. Run `supabase/migrate-v3.3.4.sql` **once** in Supabase SQL Editor.
-3. Do **not** rerun schema/seed/history/v3.2/v3.3/v3.3.1/v3.3.2/v3.3.3 migrations on the existing database.
+1. Overlay the v3.3.5 patch over the current application files.
+2. Run `supabase/migrate-v3.3.5.sql` **once** in Supabase SQL Editor.
+3. Do **not** rerun schema/seed/history/v3.2/v3.3/v3.3.1/v3.3.2/v3.3.3/v3.3.4 migrations on the existing database.
 4. Keep the existing Production environment variables: `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, and `CRON_SECRET`.
 5. Run `npm test` and `npm run check`.
 6. Deploy with `vercel deploy --prod` or Git push.
 7. Verify the production `/api/health` still reports Supabase/push/cron configured.
-8. Fully close and reopen the installed iPhone PWA once for the `dormflow-v3-3-4-shell-2` service-worker cache.
+8. Fully close and reopen the installed iPhone PWA once for the `dormflow-v3-3-5-shell-1` service-worker cache.
 9. In Notifications, tap **Enable push / Repair**, then **Send 5-second test** and immediately background the app. Confirm an iPhone system notification arrives.
 
-If an earlier v3.3.4 draft was already applied, rerun the current migration once. It only replaces the read RPC and reapplies its grant; it does not write financial rows.
+If an earlier v3.3.5 draft was already applied, rerun the current migration once. It only replaces read/write RPCs, policies, and grants; it does not write financial rows.
 
 ## Client vs server configuration
 
@@ -23,6 +23,9 @@ Vercel environment variables hold the server-only configuration, including `SUPA
 ## Production acceptance
 
 - Home "Pay these people", Balance, and payment QR sheets agree on totals and category/date breakdowns.
+- Report Payment allows exact dated rows and partial payment amounts to be chosen before submission.
+- Admin Review preserves the chosen allocation rows and approves against the same obligations.
+- Payees receive the receipt/details payment notification only after admin approval.
 - KD profile/name changes do not fork balance identity; member ids remain the source of truth.
 - Rent appears as its own admin action and as its own balance category.
 - Due schedule groups Overdue, Due within 5 days, Later this month, and No due date.

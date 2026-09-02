@@ -1,4 +1,4 @@
-const CACHE_NAME='dormflow-v3-3-4-shell-2';
+const CACHE_NAME='dormflow-v3-3-5-shell-1';
 const STATIC_ASSETS=[
   '/','/index.html','/offline.html','/css/styles.css','/manifest.webmanifest',
   '/js/app.js','/js/router.js','/js/icons.js','/js/config.js','/js/auth.js','/js/supabase-client.js',

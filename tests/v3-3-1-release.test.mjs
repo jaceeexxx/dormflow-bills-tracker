@@ -11,8 +11,8 @@ const supabaseReadme=fs.readFileSync('supabase/README.md','utf8');
 const docs=[readme,checklist,supabaseReadme].join('\n');
 
 test('current stabilization release metadata and cache namespace are current',()=>{
-  assert.equal(pkg.version,'3.3.4');
-  assert.match(sw,/dormflow-v3-3-4/);
+  assert.equal(pkg.version,'3.3.5');
+  assert.match(sw,/dormflow-v3-3-5/);
 });
 
 test('current upgrade docs require only the additive migration',()=>{

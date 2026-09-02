@@ -12,7 +12,7 @@ const required=[
   'js/admin-overview-v3.js','js/admin-actions.js','js/admin-expenses-v3.js','js/admin-utilities-v3.js','js/admin-generic-v3.js','js/admin-review.js',
   'js/household-views-v3.js','js/announcements-v3.js','js/paylater-v3.js','js/people-settings.js','js/notifications.js','js/push.js','js/months.js',
   'api/health.js','api/push-subscribe.js','api/push-deliver.js','api/push-event.js','api/push-test.js','api/reminders.js','lib/server-supabase.js','lib/push-server.js',
-  'supabase/schema.sql','supabase/seed-members.sql','supabase/migrate-history.sql','supabase/migrate-v3.2.sql','supabase/migrate-v3.3.sql','supabase/migrate-v3.3.1.sql','supabase/migrate-v3.3.2.sql','supabase/migrate-v3.3.3.sql','supabase/migrate-v3.3.4.sql','supabase/README.md',
+  'supabase/schema.sql','supabase/seed-members.sql','supabase/migrate-history.sql','supabase/migrate-v3.2.sql','supabase/migrate-v3.3.sql','supabase/migrate-v3.3.1.sql','supabase/migrate-v3.3.2.sql','supabase/migrate-v3.3.3.sql','supabase/migrate-v3.3.4.sql','supabase/migrate-v3.3.5.sql','supabase/README.md',
   'scripts/verify-v3-history.mjs','vercel.json','package.json','README.md','docs/DEPLOYMENT.md','docs/MIGRATION.md','.env.example','RELEASE-CHECKLIST.md'
 ];
 const forbidden=[
@@ -29,7 +29,7 @@ const jsFiles=all.filter(f=>f.endsWith('.js')||f.endsWith('.mjs'));
 for(const file of jsFiles){const r=spawnSync(process.execPath,['--check',file],{encoding:'utf8'});if(r.status!==0)throw new Error(`Syntax check failed for ${path.relative(root,file)}:\n${r.stderr}`);}
 
 const pkg=JSON.parse(await readFile(path.join(root,'package.json'),'utf8'));
-if(pkg.version!=='3.3.4')throw new Error('package.json must be v3.3.4');
+if(pkg.version!=='3.3.5')throw new Error('package.json must be v3.3.5');
 if(pkg.dependencies?.['web-push']!=='^3.6.7')throw new Error('web-push dependency missing from v3 package');
 if(pkg.scripts?.test!=='node --test tests/v3-*.test.mjs')throw new Error('npm test must run only the v3 contract suite');
 
@@ -45,7 +45,7 @@ const schema=await readFile(path.join(root,'supabase/schema.sql'),'utf8');
 for(const table of ['profiles','households','household_members','billing_periods','expenses','expense_payers','expense_splits','obligations','payments','payment_allocations','payment_claims','credits','utility_records','paylater_accounts','paylater_installments','announcements','attachments','notifications','notification_preferences','push_subscriptions','split_presets','audit_log']){
   if(!new RegExp(`create table public\\.${table}\\s*\\(`,'i').test(schema))throw new Error(`Missing v3 table: ${table}`);
 }
-for(const fn of ['create_expense_v3','submit_payment_claim_v3','review_payment_claim_v3','record_payment_v3','delete_or_void_expense_v3','edit_expense_v3','initialize_month_v3','set_active_month_v3','create_paylater_v3','edit_paylater_v3','archive_paylater_v3','household_member_directory_v3','member_home_v3','member_balance_v3','member_balance_detail_v3','admin_overview_v3'])if(!new RegExp(`function public\\.${fn}`,'i').test(schema))throw new Error(`Missing v3 RPC: ${fn}`);
+for(const fn of ['create_expense_v3','submit_payment_claim_v3','review_payment_claim_v3','record_payment_v3','edit_payment_claim_v3','withdraw_payment_claim_v3','attach_payment_claim_receipt_v3','delete_or_void_expense_v3','edit_expense_v3','initialize_month_v3','set_active_month_v3','create_paylater_v3','edit_paylater_v3','archive_paylater_v3','household_member_directory_v3','member_home_v3','member_balance_v3','member_balance_detail_v3','payment_target_options_v3','validated_payment_allocations_v3','admin_overview_v3'])if(!new RegExp(`function public\\.${fn}`,'i').test(schema))throw new Error(`Missing v3 RPC: ${fn}`);
 if(!/financial-documents','financial-documents',false/i.test(schema))throw new Error('financial-documents Storage bucket must remain private.');
 if((schema.match(/enable row level security/gi)||[]).length<15)throw new Error('Expected RLS across private v3 tables.');
 
@@ -60,10 +60,12 @@ const v333=await readFile(path.join(root,'supabase/migrate-v3.3.3.sql'),'utf8');
 for(const marker of ['household_member_directory_v3','submit_payment_claim_v3','record_payment_v3','push_subscriptions'])if(!v333.includes(marker))throw new Error(`Missing v3.3.3 migration marker: ${marker}`);
 const v334=await readFile(path.join(root,'supabase/migrate-v3.3.4.sql'),'utf8');
 for(const marker of ['member_balance_detail_v3','credit_breakdown','due_groups','coalesce(e.category','coalesce(e.due_date'])if(!v334.includes(marker))throw new Error(`Missing v3.3.4 migration marker: ${marker}`);
+const v335=await readFile(path.join(root,'supabase/migrate-v3.3.5.sql'),'utf8');
+for(const marker of ['payment_target_options_v3','validated_payment_allocations_v3','edit_payment_claim_v3','withdraw_payment_claim_v3','attach_payment_claim_receipt_v3','revoke update on public.payment_claims','selected payment total must match payment amount','payment_received','attachments payment claim participant read','Yehey'])if(!v335.includes(marker))throw new Error(`Missing v3.3.5 migration marker: ${marker}`);
 const vercel=JSON.parse(await readFile(path.join(root,'vercel.json'),'utf8'));
 if(!vercel.crons?.some(c=>c.path==='/api/reminders'&&c.schedule==='0 0 * * *'))throw new Error('Daily reminders must run at 00:00 UTC / 08:00 PHT.');
 const sw=await readFile(path.join(root,'service-worker.js'),'utf8');
-if(!/dormflow-v3-3-4/i.test(sw))throw new Error('Service worker cache must be versioned for v3.3.4.');
+if(!/dormflow-v3-3-5/i.test(sw))throw new Error('Service worker cache must be versioned for v3.3.5.');
 
 const migration=await readFile(path.join(root,'supabase/migrate-history.sql'),'utf8');
 for(const value of ['2394422','2206229','188193'])if(!migration.includes(value))throw new Error(`Missing August migration verification target: ${value}`);
@@ -82,4 +84,4 @@ for(const file of all.filter(f=>textExt.has(path.extname(f))||path.basename(f)==
   if(/-----BEGIN (?:PRIVATE KEY|RSA PRIVATE KEY)-----/.test(text))throw new Error(`Private key committed in ${path.relative(root,file)}.`);
 }
 
-console.log(`DormFlow v3.3.4 project check passed: ${required.length} required files; ${jsFiles.length} JavaScript files syntax-valid; fresh schema/RLS/PWA/deployment markers present; no forbidden v2/private artifacts or committed secret-like credentials found.`);
+console.log(`DormFlow v3.3.5 project check passed: ${required.length} required files; ${jsFiles.length} JavaScript files syntax-valid; fresh schema/RLS/PWA/deployment markers present; no forbidden v2/private artifacts or committed secret-like credentials found.`);

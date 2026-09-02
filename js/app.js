@@ -17,7 +17,7 @@ import {setActiveMonth,formatBillingMonth} from './months.js';
 import {pushCapabilityStatus,sendPushTest} from './push.js';
 import {openGenericExpenseSheet,openRentSheet,openAdminPaymentSheet,openExpenseEditSheet,duplicateExpense,renderManagePeople,renderMonthlySetup,renderReports,loadAdminPayments,renderAdminPayments,openAdminPaymentEditSheet} from './admin-generic-v3.js';
 import {loadHouseholdExpenses,renderHouseholdExpenses,loadUtilities,renderUtilities} from './household-views-v3.js';
-import {openExpenseAttachmentSheet} from './attachments.js';
+import {openClaimReceiptSheet,openExpenseAttachmentSheet} from './attachments.js';
 import {getLockConfig,verifyLocalPin} from './app-lock.js';
 import {supabase} from './auth.js';
 import {initBankingCarousels} from './banking-carousel.js';
@@ -153,6 +153,7 @@ function bindShell(){
   document.addEventListener('click',async e=>{
     try{
       const profileMember=e.target.closest('[data-payment-profile]')?.dataset.paymentProfile;if(profileMember){const balanceDetail=await loadMemberBalance().catch(()=>null);return openPaymentProfileSheet(profileMember,{identity:state.identity,balanceDetail});}
+      const receiptClaim=e.target.closest('[data-claim-receipt]')?.dataset.claimReceipt;if(receiptClaim)return openClaimReceiptSheet({claimId:receiptClaim});
       const editPaymentMember=e.target.closest('[data-edit-payment-profile]')?.dataset.editPaymentProfile;if(editPaymentMember)return openPaymentMethodSheet({identity:state.identity,targetMemberId:editPaymentMember,onDone:()=>renderApp()});
       const copyText=e.target.closest('[data-copy-text]')?.dataset.copyText;if(copyText){await navigator.clipboard?.writeText(copyText);showToast('Payment details copied');return;}
             const noteButton=e.target.closest('[data-notification-id]');const noteId=noteButton?.dataset.notificationId;if(noteId){const rows=await loadNotifications(),note=rows.find(n=>n.id===noteId);await markRead(noteId);await refreshNotificationBadge();if(note){state.route=notificationRoute(note,state.identity);return renderApp();}return renderApp();}
@@ -174,10 +175,11 @@ function bindShell(){
       const del=e.target.closest('[data-expense-delete]')?.dataset.expenseDelete;if(del&&confirm('Archive this expense? Its financial history will be preserved.')){await smartDeleteExpense(del,'Archived by admin');document.querySelector('#sheet').close();showToast('Expense removed');return renderApp();}
       const month=e.target.closest('[data-month-activate],[data-month-create]')?.dataset.monthActivate||e.target.closest('[data-month-create]')?.dataset.monthCreate;if(month){if(!navigator.onLine)throw new Error('Reconnect before changing the billing month.');if(!confirm(`Make ${formatBillingMonth(month)} the current billing month? Previous unpaid balances will remain.`))return;const periodId=await setActiveMonth(month);queuePushForTarget({targetType:'billing_period',targetId:periodId});showToast(`${formatBillingMonth(month)} is now current`);return renderApp();}
       const route=e.target.closest('[data-route]')?.dataset.route;if(route)return navigate(route);
-      const action=e.target.closest('[data-action]')?.dataset.action;
+      const actionButton=e.target.closest('[data-action]');
+      const action=actionButton?.dataset.action;
       if(action==='navigate-back')return navigateBack();
       if(action==='retry')return renderApp();
-      if(action==='report-payment')return openReportPaymentSheet({identity:state.identity,onDone:()=>{state.route='payments';renderApp();}});
+      if(action==='report-payment')return openReportPaymentSheet({identity:state.identity,payeeId:actionButton?.dataset.payeeId,onDone:()=>{state.route='payments';renderApp();}});
       if(action==='payment-method')return openPaymentMethodSheet({identity:state.identity,onDone:()=>renderApp()});
       if(action==='edit-profile')return openProfileSheet({identity:state.identity,onDone:()=>renderApp()});
       if(action==='signout'){stopHouseholdRealtime();await logout(state.identity);state.session=null;state.identity=null;state.unlocked=false;return renderApp();}
