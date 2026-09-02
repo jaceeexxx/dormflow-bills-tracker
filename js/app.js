@@ -198,7 +198,20 @@ function bindShell(){
 }
 
 function showForegroundPush(payload={}){const existing=document.querySelector('.foreground-push-banner');if(existing)existing.remove();const banner=document.createElement('button');banner.type='button';banner.className='foreground-push-banner';banner.innerHTML=`<strong>${String(payload.title||'DormFlow')}</strong><span>${String(payload.body||'You have a new notification.')}</span>`;banner.onclick=()=>{const hash=new URL(payload.url||'/#/notifications',location.origin).hash.replace(/^#\/?/,'');banner.remove();if(hash){state.route=hash;navigate(hash);renderApp();}};document.body.append(banner);setTimeout(()=>banner.remove(),6000);}
-async function registerPwa(){if('serviceWorker' in navigator){navigator.serviceWorker.addEventListener('message',event=>{if(event.data?.type==='dormflow:push')showForegroundPush(event.data.payload||{});});try{await navigator.serviceWorker.register('/service-worker.js');}catch{}}}
+let serviceWorkerRefreshing=false;
+async function registerPwa(){
+  if(!('serviceWorker' in navigator))return;
+  navigator.serviceWorker.addEventListener('message',event=>{if(event.data?.type==='dormflow:push')showForegroundPush(event.data.payload||{});});
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{
+    if(serviceWorkerRefreshing)return;
+    serviceWorkerRefreshing=true;
+    window.location.reload();
+  });
+  try{
+    const registration=await navigator.serviceWorker.register('/service-worker.js');
+    await registration.update().catch(()=>{});
+  }catch{}
+}
 
 async function boot(){
   bindShell();registerPwa();

@@ -1,15 +1,15 @@
-# DormFlow v3.3.2 deployment
+# DormFlow v3.3.4 deployment
 
-## Existing v3.3.1 project
+## Existing v3.3.3 project
 
-1. Overlay the v3.3.2 patch over the current application files.
-2. Run `supabase/migrate-v3.3.2.sql` **once** in Supabase SQL Editor.
-3. Do **not** rerun schema/seed/history/v3.2/v3.3/v3.3.1 migrations on the existing database.
+1. Overlay the v3.3.4 patch over the current application files.
+2. Run `supabase/migrate-v3.3.4.sql` **once** in Supabase SQL Editor.
+3. Do **not** rerun schema/seed/history/v3.2/v3.3/v3.3.1/v3.3.2/v3.3.3 migrations on the existing database.
 4. Keep the existing Production environment variables: `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, and `CRON_SECRET`.
 5. Run `npm test` and `npm run check`.
 6. Deploy with `vercel deploy --prod` or Git push.
 7. Verify the production `/api/health` still reports Supabase/push/cron configured.
-8. Fully close and reopen the installed iPhone PWA once for the `dormflow-v3-3-2` service-worker cache.
+8. Fully close and reopen the installed iPhone PWA once for the `dormflow-v3-3-4` service-worker cache.
 9. In Notifications, tap **Enable push / Repair**, then **Send 5-second test** and immediately background the app. Confirm an iPhone system notification arrives.
 
 ## Client vs server configuration
@@ -20,10 +20,12 @@ Vercel environment variables hold the server-only configuration, including `SUPA
 
 ## Production acceptance
 
-- Admin Utility/Grocery/Other/Announcement/PayLater Add → Save closes after success and data is visible immediately.
-- September 5 Upcoming includes **SPayLater · Aerian ₱592** and **SPayLater · Jace ₱4,660**.
-- Household Settlement shows Needs to pay / Owed to member / Net position and future October/November draft installments do not inflate September balances.
-- Mobile PayLater schedule, Notifications, Upcoming, Back control, logo, cropper, and file readiness do not overlap or hide state.
+- Home "Pay these people", Balance, and payment QR sheets agree on totals and category/date breakdowns.
+- KD profile/name changes do not fork balance identity; member ids remain the source of truth.
+- Rent appears as its own admin action and as its own balance category.
+- Due schedule groups Overdue, Due within 5 days, Later this month, and No due date.
+- Payment breakdown rows do not overlap on iPhone widths and member avatars render from profile media when present.
+- Announcement ticker is readable and not too fast.
 - Push diagnostics show Permission granted, Browser subscription ready, Server registration ready, and VAPID key current before the background test.
 
 ## Fresh deployment

@@ -4,7 +4,7 @@ import fs from 'node:fs';
 const sw=fs.readFileSync('service-worker.js','utf8');
 
 test('current v3 service worker versions cache and removes older caches',()=>{
-  assert.match(sw,/dormflow-v3-3-2/i);
+  assert.match(sw,/dormflow-v3-3-4/i);
   assert.match(sw,/caches\.keys\(\)/);
   assert.match(sw,/caches\.delete/);
 });
@@ -13,7 +13,7 @@ test('release-critical navigation CSS and JS are network-first with cached fallb
   assert.match(sw,/request\.mode\s*===\s*['"]navigate['"]/);
   assert.match(sw,/\.css|css/i);
   assert.match(sw,/\.js|js/i);
-  assert.match(sw,/fetch\(request\)/);
+  assert.match(sw,/cache:\s*['"]reload['"]/);
   assert.match(sw,/cache\.put\(request/);
   assert.match(sw,/caches\.match\(request\)/);
   const criticalBranch=sw.indexOf("request.mode==='navigate'");

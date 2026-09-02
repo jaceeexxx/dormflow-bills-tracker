@@ -8,11 +8,11 @@ const checklist=fs.readFileSync('RELEASE-CHECKLIST.md','utf8');
 const release=fs.readFileSync('scripts/package-release.mjs','utf8');
 
 test('current v3 release metadata and upgrade docs target the existing authenticated v3 database',()=>{
-  assert.equal(pkg.version,'3.3.2');
+  assert.equal(pkg.version,'3.3.4');
   for(const text of [readme,deploy,checklist]){
-    assert.match(text,/migrate-v3\.3\.2\.sql/i);
+    assert.match(text,/migrate-v3\.3\.4\.sql/i);
     assert.match(text,/do\s+(?:\*\*)?not(?:\*\*)?\s+(?:re-?run|run again)/i);
   }
-  assert.match(release,/DormFlow_v3_3_2_Admin_Accounting_Stabilization_PWA_20_St_Paul\.zip/);
-  assert.match(release,/migrate-v3\.3\.2\.sql/i);
+  assert.match(release,/DormFlow_v3_3_4_Balance_Rent_Clarity_PWA_20_St_Paul\.zip/);
+  assert.match(release,/migrate-v3\.3\.4\.sql/i);
 });

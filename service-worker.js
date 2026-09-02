@@ -1,4 +1,4 @@
-const CACHE_NAME='dormflow-v3-3-2-shell-1';
+const CACHE_NAME='dormflow-v3-3-4-shell-1';
 const STATIC_ASSETS=[
   '/','/index.html','/offline.html','/css/styles.css','/manifest.webmanifest',
   '/js/app.js','/js/router.js','/js/icons.js','/js/config.js','/js/auth.js','/js/supabase-client.js',
@@ -13,8 +13,9 @@ async function updateCache(request,response){
   }
   return response;
 }
-async function networkFirst(request,{fallback=null}={}){
-  try{return await updateCache(request,await fetch(request));}
+async function networkFirst(request,{fallback=null,forceReload=false}={}){
+  const networkRequest=forceReload?new Request(request,{cache:'reload'}):request;
+  try{return await updateCache(request,await fetch(networkRequest));}
   catch{
     const cached=await caches.match(request);
     if(cached)return cached;
@@ -45,11 +46,11 @@ self.addEventListener('fetch',event=>{
   if(url.origin!==self.location.origin)return;
   const releaseCritical=request.mode==='navigate'||url.pathname.endsWith('.css')||url.pathname.endsWith('.js');
   if(request.mode==='navigate'){
-    event.respondWith(networkFirst(request,{fallback:'/index.html'}).then(response=>response||caches.match('/offline.html')));
+    event.respondWith(networkFirst(request,{fallback:'/index.html',forceReload:true}).then(response=>response||caches.match('/offline.html')));
     return;
   }
   if(releaseCritical){
-    event.respondWith(networkFirst(request));
+    event.respondWith(networkFirst(request,{forceReload:true}));
     return;
   }
   event.respondWith(cacheFirst(request));

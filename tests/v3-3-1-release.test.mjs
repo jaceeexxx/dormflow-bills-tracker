@@ -11,15 +11,15 @@ const supabaseReadme=fs.readFileSync('supabase/README.md','utf8');
 const docs=[readme,checklist,supabaseReadme].join('\n');
 
 test('current stabilization release metadata and cache namespace are current',()=>{
-  assert.equal(pkg.version,'3.3.2');
-  assert.match(sw,/dormflow-v3-3-2/);
+  assert.equal(pkg.version,'3.3.4');
+  assert.match(sw,/dormflow-v3-3-4/);
 });
 
 test('current upgrade docs require only the additive migration',()=>{
-  assert.match(readme,/migrate-v3\.3\.2\.sql/i);
-  assert.match(supabaseReadme,/existing v3\.3\.1.*v3\.3\.2/is);
-  assert.match(supabaseReadme,/migrate-v3\.3\.2\.sql/i);
-  assert.match(docs,/do\s+(?:\*\*)?not(?:\*\*)?\s+re-?run[^\n]*(schema\.sql|earlier|migrate-v3\.3\.1\.sql)/i);
+  assert.match(readme,/migrate-v3\.3\.4\.sql/i);
+  assert.match(supabaseReadme,/existing v3\.3\.3.*v3\.3\.4/is);
+  assert.match(supabaseReadme,/migrate-v3\.3\.4\.sql/i);
+  assert.match(docs,/do\s+(?:\*\*)?not(?:\*\*)?\s+re-?run[^\n]*(schema\.sql|earlier|migrate-v3\.3\.3\.sql)/i);
 });
 
 test('release checklist explicitly verifies the installed iPhone PWA and push',()=>{

@@ -1,22 +1,23 @@
-# DormFlow v3.3.2 Release Checklist
+# DormFlow v3.3.4 Release Checklist
 
 - [ ] `npm test` passes with zero failures.
-- [ ] `npm run check` passes and package version is v3.3.2.
-- [ ] Existing v3.3.1 project runs **only** `supabase/migrate-v3.3.2.sql` once.
-- [ ] Do not rerun earlier schema/seed/history or v3.2/v3.3/v3.3.1 migrations on the existing database.
-- [ ] August verification remains ₱23,944.22 / ₱22,062.29 / ₱1,881.93.
+- [ ] `npm run check` passes and package version is v3.3.4.
+- [ ] Existing v3.3.3 project runs **only** `supabase/migrate-v3.3.4.sql` once.
+- [ ] Do not rerun earlier schema/seed/history or v3.2/v3.3/v3.3.1/v3.3.2/v3.3.3 migrations on the existing database.
+- [ ] August verification remains PHP 23,944.22 / PHP 22,062.29 / PHP 1,881.93.
 - [ ] September current balance excludes October/November draft PayLater installments while prior unpaid balances still carry forward.
-- [ ] Legacy September PayLater matches Sep 5 Aerian ₱592, Sep 5 Jace ₱4,660, Sep 15 Aexy ₱280, Sep 15 Kean ₱428, Sep 16 Jace TikTok ₱360.
+- [ ] Legacy September PayLater matches Sep 5 Aerian PHP 592, Sep 5 Jace PHP 4,660, Sep 15 Aexy PHP 280, Sep 15 KD PHP 428, Sep 16 Jace TikTok PHP 360.
 - [ ] Borrower has no self-obligation; only the other three roommate shares are reimbursement obligations.
-- [ ] Admin Add/Save works for Utility, Grocery, Other Expense, Announcement, and PayLater; successful Save closes and failed Save preserves inputs.
-- [ ] Admin Manage screens use normalized `periodId` everywhere.
-- [ ] Selected file/crop state is visible before Save.
-- [ ] Admin Settlement shows Needs to pay / Owed to member / Net position.
-- [ ] Upcoming uses current-month schedule rows and shows Sep 5 PayLater.
-- [ ] Back touch target, PayLater Schedule cards, mobile logo, Notifications, Upcoming, and Settlement do not overlap on iPhone widths.
+- [ ] Admin Add/Save works for Utility, Grocery, Other Expense, Rent, Announcement, and PayLater; successful Save closes and failed Save preserves inputs.
+- [ ] Home "Pay these people", Balance, and payment QR sheets agree on totals and owed breakdown rows.
+- [ ] Due schedule groups Overdue, Due within 5 days, Later this month, and No due date.
+- [ ] Credit balance has a visible breakdown by creditor/payment instead of only a total.
+- [ ] KD profile/name changes preserve the same household member id and do not duplicate Kean/KD balances.
+- [ ] Back touch target, payment breakdown cards, mobile logo, Notifications, Upcoming, Settlement, and Balance do not overlap on iPhone widths.
+- [ ] Announcement ticker speed is readable.
 - [ ] Push diagnostics require browser + server + current VAPID before showing Active.
 - [ ] Installed iPhone PWA: tap **Send 5-second test**, background app, and receive a real system push notification.
 - [ ] Expired 404/410 subscriptions are marked inactive.
-- [ ] Service-worker cache is v3.3.2 and release-critical CSS/JS remain network-first.
+- [ ] Service-worker cache is v3.3.4 and release-critical navigation/CSS/JS force a network reload.
 - [ ] No secret/service-role JWT, `sb_secret_`, VAPID private key, or `CRON_SECRET` value is committed.
-- [ ] Full ZIP and focused v3.3.1 → v3.3.2 upgrade ZIP pass integrity and overlay verification.
+- [ ] Full ZIP passes integrity and overlay verification.
