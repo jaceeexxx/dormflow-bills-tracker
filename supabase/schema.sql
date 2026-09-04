@@ -165,6 +165,7 @@ select o.id,o.household_id,o.period_id,o.source_expense_id,o.debtor_member_id,o.
     -coalesce((select sum(ca.amount_cents) from public.credit_applications ca join public.credits c on c.id=ca.credit_id where ca.obligation_id=o.id and c.status<>'void'),0))::bigint as outstanding_cents
 from public.obligations o left join public.expenses e on e.id=o.source_expense_id
 where o.status='active' and (e.id is null or e.status='active');
+grant select on public.obligation_balances_v3 to authenticated;
 
 -- Transaction helper: create obligations from member net positions for an expense.
 create or replace function public.generate_expense_obligations_v3(p_expense uuid) returns void language plpgsql security definer set search_path=public as $$

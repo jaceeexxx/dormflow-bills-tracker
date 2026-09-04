@@ -17,7 +17,7 @@ export function buildAdminDashboard({base={},expenses=[],obligations=[],allocati
     return !month||String(month).slice(0,10)<=String(periodMonth).slice(0,10);
   };
   const visibleObligations=(obligations||[]).filter(throughActive);
-  const open=visibleObligations.map(row=>({...row,outstandingCents:Math.max(0,asNum(row.original_amount_cents)-asNum(paid.get(row.id)))})).filter(row=>row.outstandingCents>0);
+  const open=visibleObligations.map(row=>({...row,outstandingCents:row.outstanding_cents===undefined?Math.max(0,asNum(row.original_amount_cents)-asNum(paid.get(row.id))):Math.max(0,asNum(row.outstanding_cents))})).filter(row=>row.outstandingCents>0);
   const outstandingCents=asNum(base.outstanding_cents??base.outstandingCents??open.reduce((s,x)=>s+x.outstandingCents,0));
   const settledCents=Math.max(0,totalCents-outstandingCents);
   const settledRate=totalCents?Math.max(0,Math.min(100,(settledCents/totalCents)*100)):0;
@@ -37,16 +37,35 @@ export function buildAdminDashboard({base={},expenses=[],obligations=[],allocati
 
   const currentOpen=open.filter(row=>!periodId||row.period_id===periodId);
   const memberSettlement=members.map(member=>{
-    const needsToPayCents=open.filter(x=>x.debtor_member_id===member.id).reduce((s,x)=>s+x.outstandingCents,0);
-    const owedToMemberCents=open.filter(x=>x.creditor_member_id===member.id).reduce((s,x)=>s+x.outstandingCents,0);
+    const payable=open.filter(x=>x.debtor_member_id===member.id);
+    const receivable=open.filter(x=>x.creditor_member_id===member.id);
+    const needsToPayCents=payable.reduce((s,x)=>s+x.outstandingCents,0);
+    const owedToMemberCents=receivable.reduce((s,x)=>s+x.outstandingCents,0);
+    const categoryMap=new Map();
+    for(const row of payable){
+      const category=normalizeCategory(row.source_category||'Other');
+      const item=categoryMap.get(category)||{label:category,amountCents:0,count:0};
+      item.amountCents+=row.outstandingCents;item.count+=1;categoryMap.set(category,item);
+    }
+    const payableBreakdown=[...categoryMap.values()].sort((a,b)=>b.amountCents-a.amountCents);
+    const creditorMap=new Map();
+    for(const row of payable){
+      const creditorName=people.get(row.creditor_member_id)?.name||row.creditor_label||'Household';
+      const key=row.creditor_member_id||creditorName;
+      const item=creditorMap.get(key)||{name:creditorName,amountCents:0};
+      item.amountCents+=row.outstandingCents;creditorMap.set(key,item);
+    }
     const netPositionCents=owedToMemberCents-needsToPayCents;
     return {
       id:member.id,
       name:people.get(member.id)?.name||'Member',
       accent:member.accent||'#6b7d76',
+      avatarUrl:member.avatarUrl||'',
       needsToPayCents,
       owedToMemberCents,
       netPositionCents,
+      payableBreakdown,
+      creditorBreakdown:[...creditorMap.values()].sort((a,b)=>b.amountCents-a.amountCents),
       outstandingCents:needsToPayCents,
       status:needsToPayCents>0?'open':'settled'
     };

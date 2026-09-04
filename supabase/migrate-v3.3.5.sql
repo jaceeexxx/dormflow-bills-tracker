@@ -4,6 +4,33 @@
 
 begin;
 
+grant select on public.obligation_balances_v3 to authenticated;
+
+create or replace function public.household_member_directory_v3(
+  p_include_inactive boolean default false
+)
+returns table(
+  member_id uuid,
+  display_name text,
+  role text,
+  avatar_path text,
+  is_active boolean
+)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select hm.id, p.display_name, hm.role, p.avatar_path, hm.is_active
+  from public.household_members hm
+  join public.profiles p on p.id = hm.profile_id
+  where hm.household_id = public.current_household_id_v3()
+    and (p_include_inactive or hm.is_active = true)
+  order by hm.created_at asc;
+$$;
+
+grant execute on function public.household_member_directory_v3(boolean) to authenticated;
+
 create or replace function public.payment_target_options_v3(
   p_debtor uuid default null,
   p_creditor uuid default null

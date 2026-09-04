@@ -609,6 +609,10 @@ html,body{
 
 .settlement-financial-row{grid-template-columns:42px minmax(0,1fr);align-items:start;gap:12px;padding:14px 0}
 .settlement-financial-row .member-avatar{width:42px;height:42px}
+.settlement-financial-row .member-avatar{overflow:hidden}
+.settlement-financial-row .member-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.settlement-financial-row .member-avatar{overflow:hidden}
+.settlement-financial-row .member-avatar img{width:100%;height:100%;object-fit:cover;display:block}
 .settlement-name{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}
 .settlement-name strong{font-size:13px}
 .settlement-metrics{
@@ -622,6 +626,21 @@ html,body{
 .settlement-metrics b{font-size:10px;line-height:1.25;white-space:nowrap;color:var(--ink)}
 .settlement-metrics b.positive{color:var(--brand)}
 .settlement-metrics b.negative{color:var(--red)}
+.settlement-financial-row{display:block;border-bottom:1px solid #edf1ef}
+.settlement-financial-row>summary{position:relative;display:grid;grid-template-columns:42px minmax(0,1fr);align-items:start;gap:12px;padding:14px 24px 14px 0;cursor:pointer;list-style:none}
+.settlement-financial-row>summary::-webkit-details-marker{display:none}
+.settlement-financial-row>summary:after{content:'+';position:absolute;top:15px;right:0;color:var(--muted);font-size:18px;line-height:1}
+.settlement-financial-row[open]>summary:after{content:'−'}
+.settlement-detail{display:grid;gap:7px;margin:0 0 14px 54px;padding:11px 12px;border-radius:11px;background:var(--surface-soft);font-size:10px}
+.settlement-detail>div{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding-bottom:5px}
+.settlement-detail small{color:var(--muted);line-height:1.4}
+.claim-reconciliation{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.claim-reconciliation>div{display:grid;gap:4px;padding:10px;border-radius:11px;background:var(--surface-soft)}
+.claim-reconciliation small{font-size:9px;color:var(--muted);line-height:1.2}
+.claim-reconciliation strong{font-size:13px;white-space:nowrap}
+.bank-transaction-card .transaction-actions{align-items:center}
+.bank-transaction-card .transaction-actions .text-action{min-height:0;padding:0}
+.bank-transaction-card .transaction-actions .status-pill{align-self:center}
 
 /* The cropper is a native dialog in v3.3.2, so reset browser dialog chrome and
    let showModal() place it in the top layer above the profile bottom sheet. */
